@@ -10,6 +10,12 @@ const EXPECTED_REPOSITORY="teddyjeremy/Crypto-Secret-Exposure-Hunter";
 const EXPECTED_WORKFLOW=`${EXPECTED_REPOSITORY}/.github/workflows/crypto-scan.yml@refs/heads/main`;
 const JWKS=createRemoteJWKSet(new URL(`${GITHUB_ISSUER}/.well-known/jwks`));
 async function authorized(request:NextRequest):Promise<boolean>{
+ const workerToken=process.env.WORKER_INGEST_TOKEN||"";
+ const suppliedWorkerToken=request.headers.get("x-worker-token")||"";
+ if(workerToken && suppliedWorkerToken && suppliedWorkerToken.length===workerToken.length){
+  const {timingSafeEqual}=await import("node:crypto");
+  if(timingSafeEqual(Buffer.from(suppliedWorkerToken),Buffer.from(workerToken)))return true;
+ }
  const header=request.headers.get("authorization")||"";
  const token=header.startsWith("Bearer ")?header.slice(7):"";
  if(!token)return false;
