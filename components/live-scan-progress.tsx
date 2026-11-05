@@ -15,6 +15,7 @@ type ScanRun = {
     phase?: string;
     message?: string;
     progress_percent?: number;
+    repositories_skipped_unchanged?: number;
     current_repository?: string | null;
     status_counts?: Record<string, number>;
     repositories?: Array<{full_name: string; html_url?: string; ecosystem?: string; status?: string; finding_count?: number}>;
