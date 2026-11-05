@@ -314,6 +314,9 @@ def main() -> None:
         summary["current_repository"] = repo["full_name"]
         summary["message"] = f"Scanning {repo['full_name']} ({index}/{len(repositories)})."
         summary["progress_percent"] = round(((index - 1) / max(1, len(repositories))) * 100)
+        summary["message"] = f"Scanning {repo['full_name']} ({index}/{len(repositories)})."
+        # Publish the in-flight repository before the clone and Gitleaks scan begin.
+        send_event("progress", run, summary, repo)
         print(f"[{index}/{len(repositories)}] Scanning {repo['full_name']} ({repo['ecosystem']})")
         try:
             status, findings = scan_repository(repo)
