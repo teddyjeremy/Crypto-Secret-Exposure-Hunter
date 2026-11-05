@@ -231,7 +231,9 @@ def scan_repository(repo: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
 
 def main() -> None:
     if not INGEST_URL.startswith("https://"):
-        raise RuntimeError("INGEST_URL and INGEST_TOKEN GitHub Actions secrets are required.")
+        raise RuntimeError("INGEST_URL must be an HTTPS endpoint.")
+    if not VERCEL_BYPASS:
+        raise RuntimeError("Add VERCEL_AUTOMATION_BYPASS_SECRET to GitHub Actions secrets.")
     run_id = str(uuid.uuid4())
     started = utc_now()
     print("Discovering public repositories by ecosystem metadata.")
@@ -275,12 +277,15 @@ def main() -> None:
         ],
         "findings": all_findings,
     }
+    # GitHub issues a short-lived OIDC JWT scoped to this workflow. The Vercel API
+    # verifies issuer, audience, repository, branch, workflow path and event name.
+    identity_token = github_oidc_token()
     response = requests.post(
         INGEST_URL,
         headers={
-            "Authorization": f"Bearer {INGEST_TOKEN}",
+            "Authorization": f"Bearer {identity_token}",
             "Content-Type": "application/json",
-            **({"x-vercel-protection-bypass": VERCEL_BYPASS} if VERCEL_BYPASS else {}),
+            "x-vercel-protection-bypass": VERCEL_BYPASS,
         },
         json=payload,
         timeout=90,
