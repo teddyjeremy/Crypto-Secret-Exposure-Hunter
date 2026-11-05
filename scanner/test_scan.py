@@ -26,6 +26,13 @@ class SanitizationTests(unittest.TestCase):
         self.assertEqual(safe[0]["file_path"], ".env")
         self.assertEqual(safe[0]["line_number"], 7)
 
+    def test_gitleaks_rule_is_classified_as_secret_candidate(self):
+        repo = {"full_name": "example/solana-app", "ecosystem": "Solana"}
+        raw = [{"RuleID": "solana-keypair-json", "Description": "Solana keypair byte array", "File": "wallet.json", "Commit": "abcdef123456", "StartLine": 4}]
+        finding = sanitize_report(raw, repo)[0]
+        self.assertEqual(finding["classification"], "secret_candidate")
+        self.assertEqual(finding["secret_type"], "solana_keypair")
+        self.assertEqual(finding["confidence"], "high")
     def test_non_list_report_is_ignored(self):
         self.assertEqual(sanitize_report({"Secret": "do-not-store"}, {
             "full_name": "example/repo", "ecosystem": "Other Web3"
