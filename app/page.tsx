@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Activity, AlertTriangle, Database, GitBranch, ShieldCheck, ArrowUpRight, Clock3 } from "lucide-react";
 import { getDashboardData } from "@/lib/db";
 import { RunScanButton } from "@/components/run-scan-button";
+import { LiveScanProgress } from "@/components/live-scan-progress";
 export const dynamic = "force-dynamic";
 const fmt=(v:any)=>v?new Date(v).toLocaleString():"—";
 export default async function Home(){
@@ -13,6 +14,7 @@ export default async function Home(){
  return <>
   <header className="topbar"><div><div className="eyebrow">SECURITY OPERATIONS / OVERVIEW</div><h1 className="page-title">Exposure intelligence</h1><div className="page-subtitle">Public blockchain repository monitoring and responsible disclosure.</div></div><div className="top-actions"><span className="pill">ALL CHAINS · PUBLIC REPOS</span><RunScanButton/></div></header>
   {dbError&&<div className="notice"><strong>Database connection unavailable.</strong> Check DATABASE_URL in Vercel project settings and redeploy.</div>}
+  <LiveScanProgress initialRun={data?.runs?.[0] || null}/>
   <section className="grid stats">
    <div className="stat-card"><div className="stat-head">Repositories tracked <span className="stat-icon"><GitBranch size={15}/></span></div><div className="stat-value">{stats.repositories??"—"}</div><div className="stat-foot">Unique public repositories discovered</div></div>
    <div className="stat-card"><div className="stat-head">Open findings <span className="stat-icon"><AlertTriangle size={15}/></span></div><div className="stat-value">{stats.open_findings??"—"}</div><div className="stat-foot">Excluding false positives and remediated</div></div>
