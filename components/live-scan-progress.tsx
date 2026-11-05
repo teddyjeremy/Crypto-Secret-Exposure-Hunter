@@ -43,7 +43,7 @@ export function LiveScanProgress({ initialRun }: { initialRun?: ScanRun | null }
       } catch { /* Keep the last successfully received progress snapshot. */ }
     };
     refresh();
-    const timer = window.setInterval(refresh, 2000);
+    const timer = window.setInterval(refresh, 5000);
     return () => { alive = false; window.clearInterval(timer); };
   }, [router]);
 
@@ -52,16 +52,19 @@ export function LiveScanProgress({ initialRun }: { initialRun?: ScanRun | null }
   const repos = summary.repositories || [];
   const scanned = Number(run.repositories_scanned || 0);
   const discovered = Number(run.repositories_discovered || 0);
+  const skipped = Number(summary.repositories_skipped_unchanged || 0);
+  const processed = Object.values(summary.status_counts || {}).reduce((total, value) => total + Number(value || 0), 0);
+  const candidates = Math.max(0, discovered - skipped);
   const percent = Math.max(0, Math.min(100, Number(summary.progress_percent ?? (run.status === "completed" ? 100 : 0))));
   const running = run.status === "running";
   return <section className="panel" style={{marginBottom:18}}>
     <div className="panel-head">
-      <div><div className="panel-title">Live scan progress</div><div className="panel-kicker" style={{marginTop:4}}>LIVE UPDATES · 2 SECOND REFRESH</div></div>
+      <div><div className="panel-title">Live scan progress</div><div className="panel-kicker" style={{marginTop:4}}>LIVE UPDATES · 5 SECOND REFRESH</div></div>
       <span className={`badge ${running ? "medium" : run.status === "completed" ? "new" : "low"}`}>{label(run.status)}</span>
     </div>
     <div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap",fontSize:12,color:"var(--muted)"}}>
       <span>{summary.message || "Waiting for worker progress…"}</span>
-      <strong style={{color:"var(--text)"}}>{scanned}/{discovered} repositories scanned · {Number(run.findings_total || 0)} findings</strong>
+      <strong style={{color:"var(--text)"}}>{processed}/{candidates} processed · {scanned} successful · {Number(run.findings_total || 0)} findings · {skipped} unchanged skipped</strong>
     </div>
     <div style={{height:7,background:"var(--surface-2)",borderRadius:99,overflow:"hidden",marginTop:12}}>
       <div style={{height:"100%",width:`${percent}%`,background:"var(--accent)",borderRadius:99,transition:"width .25s ease"}}/>
