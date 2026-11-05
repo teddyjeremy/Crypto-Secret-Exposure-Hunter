@@ -1,0 +1,56 @@
+name: Crypto secret exposure scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_repos:
+        description: Maximum public repositories to scan in this run
+        required: false
+        default: "30"
+  schedule:
+    - cron: "17 4 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: crypto-secret-hunter-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      INGEST_URL: ${{ secrets.INGEST_URL }}
+      INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
+      MAX_REPOS: ${{ inputs.max_repos || '30' }}
+      PER_QUERY: "8"
+      MAX_REPO_SIZE_KB: "150000"
+      REPO_TIMEOUT_SECONDS: "240"
+    steps:
+      - name: Checkout scanner
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+
+      - name: Set up Go
+        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
+        with:
+          go-version: "1.23.5"
+
+      - name: Install scanner dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install requests==2.32.3
+          go install github.com/zricethezav/gitleaks/v8@v8.24.2
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Run public repository scan
+        run: python scanner/scan.py
