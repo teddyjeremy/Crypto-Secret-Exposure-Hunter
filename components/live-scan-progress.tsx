@@ -43,7 +43,7 @@ export function LiveScanProgress({ initialRun }: { initialRun?: ScanRun | null }
       } catch { /* Keep the last successfully received progress snapshot. */ }
     };
     refresh();
-    const timer = window.setInterval(refresh, 5000);
+    const timer = window.setInterval(refresh, 2000);
     return () => { alive = false; window.clearInterval(timer); };
   }, [router]);
 
@@ -56,7 +56,7 @@ export function LiveScanProgress({ initialRun }: { initialRun?: ScanRun | null }
   const running = run.status === "running";
   return <section className="panel" style={{marginBottom:18}}>
     <div className="panel-head">
-      <div><div className="panel-title">Live scan progress</div><div className="panel-kicker" style={{marginTop:4}}>AUTO-REFRESHES EVERY 5 SECONDS</div></div>
+      <div><div className="panel-title">Live scan progress</div><div className="panel-kicker" style={{marginTop:4}}>LIVE UPDATES · 2 SECOND REFRESH</div></div>
       <span className={`badge ${running ? "medium" : run.status === "completed" ? "new" : "low"}`}>{label(run.status)}</span>
     </div>
     <div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap",fontSize:12,color:"var(--muted)"}}>
