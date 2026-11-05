@@ -98,8 +98,19 @@ def github_oidc_token() -> str:
 
 def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
     found: dict[str, dict[str, Any]] = {}
-    per_ecosystem = max(1, min(PER_QUERY, MAX_REPOS // max(1, len(ECOSYSTEMS))))
-    for index, (ecosystem, query) in enumerate(ECOSYSTEMS.items()):
+    # Supplement ecosystem-topic discovery with wallet-focused searches. These
+    # improve recall for repositories that do not use ecosystem topic tags.
+    wallet_queries = [
+        ("Solana", "solana wallet"),
+        ("Ethereum / EVM", "ethereum wallet"),
+        ("Other Web3", "web3 wallet"),
+        ("Other Web3", "crypto wallet"),
+        ("Other Web3", "blockchain wallet"),
+        ("Other Web3", "walletconnect"),
+    ]
+    discovery_queries = list(ECOSYSTEMS.items()) + wallet_queries
+    per_ecosystem = max(1, min(PER_QUERY, MAX_REPOS // max(1, len(discovery_queries))))
+    for index, (ecosystem, query) in enumerate(discovery_queries):
         if len(found) >= MAX_REPOS:
             break
         # Allocate a balanced quota so early chains do not starve later ecosystems.
@@ -142,7 +153,7 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
                 break
         # Publish progress after each ecosystem query instead of leaving the dashboard frozen.
         if progress_callback:
-            progress_callback(index + 1, len(ECOSYSTEMS), ecosystem, len(found))
+            progress_callback(index + 1, len(discovery_queries), ecosystem, len(found))
     return list(found.values())
 
 
