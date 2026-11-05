@@ -35,8 +35,8 @@ jobs:
         run: |
           npm audit --json > "$RUNNER_TEMP/npm-audit.json" || true
           python - <<'PY'
-          import json, pathlib, sys
-          report = json.loads(pathlib.Path("$RUNNER_TEMP/npm-audit.json").read_text())
+          import json, os, pathlib, sys
+          report = json.loads((pathlib.Path(os.environ["RUNNER_TEMP"]) / "npm-audit.json").read_text())
           counts = report.get("metadata", {}).get("vulnerabilities", {})
           print("Dependency audit summary:", counts)
           for name, item in report.get("vulnerabilities", {}).items():
