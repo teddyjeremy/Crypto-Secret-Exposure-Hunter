@@ -127,6 +127,7 @@ def discover() -> list[dict[str, Any]]:
                 continue
             found[full_name] = {
                 "full_name": full_name,
+                "github_repo_id": int(item.get("id") or 0) or None,
                 "html_url": item.get("html_url", ""),
                 "clone_url": item.get("clone_url", ""),
                 "ecosystem": ecosystem,
@@ -242,8 +243,8 @@ def send_event(event: str, run: dict[str, Any], summary: dict[str, Any],
         "summary": summary,
         "repository": ({
             key: repo.get(key) for key in (
-                "full_name", "html_url", "ecosystem", "description", "stars",
-                "default_branch", "status"
+                "full_name", "github_repo_id", "html_url", "ecosystem", "description", "stars",
+                "default_branch", "pushed_at", "status"
             )
         } if repo else None),
         "findings": (findings or [])[:500],
@@ -293,18 +294,27 @@ def main() -> None:
     send_event("progress", run, summary)
     print("Discovering public repositories by ecosystem metadata.")
     repositories = discover()
-    state: dict[str, str] = {}
+    registry_payload = {"event": "registry", "repository_names": [r["full_name"] for r in repositories]}
+    registry_headers = {"Content-Type": "application/json", "x-vercel-protection-bypass": VERCEL_BYPASS}
     if WORKER_INGEST_TOKEN:
-        try:
-            state = json.loads(Path(WORKER_STATE_FILE).read_text(encoding="utf-8"))
-            if not isinstance(state, dict): state = {}
-        except (OSError, json.JSONDecodeError):
-            state = {}
-        repositories = [r for r in repositories if state.get(r["full_name"]) != (r.get("pushed_at") or "")]
-    run["repositories_discovered"] = len(repositories)
+        registry_headers["x-worker-token"] = WORKER_INGEST_TOKEN
+    else:
+        registry_headers["Authorization"] = f"Bearer {github_oidc_token()}"
+    registry_response = requests.post(INGEST_URL, headers=registry_headers, json=registry_payload, timeout=30)
+    registry_response.raise_for_status()
+    registry_rows = registry_response.json().get("repositories", [])
+    previous = {r["full_name"]: r for r in registry_rows if isinstance(r, dict) and r.get("full_name")}
+    discovered_count = len(repositories)
+    repositories = [r for r in repositories if not (
+        previous.get(r["full_name"], {}).get("latest_status") == "completed"
+        and (previous.get(r["full_name"], {}).get("last_pushed_at") or "").replace("Z", "+00:00")
+            == (r.get("pushed_at") or "").replace("Z", "+00:00")
+    )]
+    run["repositories_discovered"] = discovered_count
     summary.update({
         "phase": "scanning",
-        "message": f"Discovered {len(repositories)} repositories. Starting scans.",
+        "repositories_skipped_unchanged": discovered_count - len(repositories),
+        "message": f"Discovered {discovered_count} repositories; {len(repositories)} are new or changed. Starting scans.",
         "progress_percent": 0,
         "repositories": [
             {
