@@ -53,6 +53,21 @@ def classify_gitleaks_rule(rule_id: str, description: str = "") -> Classificatio
     if any(x in key for x in ("ethereum", "eth_private", "evm_private")):
         return Classification("secret_candidate", "evm_private_key", "high",
             "Rule indicates EVM private-key-like material.")
+    if any(x in key for x in ("bitcoin", "wif", "xprv", "extended_private_key")):
+        return Classification("secret_candidate", "bitcoin_private_key", "high",
+            "Rule indicates Bitcoin private-key or extended-private-key material.")
+    if any(x in key for x in ("ton_wallet", "ton_private", "ton_secret")):
+        return Classification("secret_candidate", "ton_wallet_secret", "high",
+            "Rule indicates TON wallet signing material.")
+    if any(x in key for x in ("sui", "aptos")) and any(x in key for x in ("private", "secret", "keypair")):
+        return Classification("secret_candidate", "move_chain_signing_key", "high",
+            "Rule indicates Sui or Aptos signing material.")
+    if any(x in key for x in ("cosmos", "injective")) and any(x in key for x in ("private", "secret", "mnemonic", "key")):
+        return Classification("secret_candidate", "cosmos_ecosystem_signing_key", "high",
+            "Rule indicates Cosmos ecosystem signing material.")
+    if any(x in key for x in ("tron", "near", "polkadot", "substrate", "cardano", "xrpl", "stellar", "algorand", "hedera", "tezos", "filecoin", "zcash", "monero", "kaspa", "internet_computer", "multiversx")) and any(x in key for x in ("private", "secret", "key", "wallet")):
+        return Classification("secret_candidate", "blockchain_signing_key", "medium",
+            "Rule indicates blockchain signing material; ecosystem mapping requires manual review.")
     if any(x in key for x in ("private_key", "privatekey", "wallet_secret")):
         return Classification("secret_candidate", "private_key", "high",
             "Rule indicates private-key-like material.")
