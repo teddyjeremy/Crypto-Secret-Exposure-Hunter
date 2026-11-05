@@ -274,7 +274,7 @@ def main() -> None:
     run = {
         "id": run_id,
         "status": "running",
-        "trigger_source": "github-actions",
+        "trigger_source": "hosted-worker" if WORKER_INGEST_TOKEN else "github-actions",
         "started_at": started,
         "completed_at": None,
         "repositories_discovered": 0,
