@@ -1,6 +1,6 @@
 # Crypto Secret Exposure Hunter
 
-A defensive research platform for discovering public blockchain repositories, scanning their complete Git history for accidentally committed secrets, and coordinating responsible disclosure.
+A defensive research platform for discovering public repositories across 24 blockchain ecosystem categories, scanning their complete Git history for accidentally committed secrets, and coordinating responsible disclosure.
 
 ## Architecture
 
