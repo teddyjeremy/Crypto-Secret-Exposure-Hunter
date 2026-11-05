@@ -24,6 +24,7 @@ jobs:
     timeout-minutes: 45
     env:
       WEB_MAX_SITES: ${{ inputs.max_sites || '30' }}
+      GITHUB_TOKEN: ${{ github.token }}
       WEB_MAX_ASSETS: "25"
       WEB_MAX_BYTES: "1500000"
       WEB_REQUEST_DELAY: "0.5"
