@@ -1,0 +1,3 @@
+# Optional, publicly accessible Solana project websites to include.
+# One HTTPS hostname per line. Do not add sites unless they are intended for
+# passive public review. GitHub repository homepage discovery runs automatically.
