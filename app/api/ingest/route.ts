@@ -27,10 +27,13 @@ export async function POST(request:NextRequest){
    const fingerprint=clean(f.fingerprint,80);const fullName=clean(f.repository_full_name,200);
    if(!/^[a-f0-9]{32,64}$/i.test(fingerprint)||!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(fullName))continue;
    const severity=["critical","high","medium","low"].includes(f.severity)?f.severity:"medium";
+   const classification=["public_information","secret_candidate","uncertain"].includes(f.classification)?f.classification:"uncertain";
+   const confidence=["low","medium","high"].includes(f.confidence)?f.confidence:"low";
+   const secretType=clean(f.secret_type,120)||null;
    const line=integer(f.line_number);
-   await sql`INSERT INTO findings(fingerprint,repository_full_name,ecosystem,severity,rule_id,description,file_path,line_number,commit_sha,first_seen_at,last_seen_at)
-    VALUES(${fingerprint},${fullName},${clean(f.ecosystem,80)||"Other Web3"},${severity},${clean(f.rule_id,120)||"unknown"},${clean(f.description,240)||null},${clean(f.file_path,700)||"(path unavailable)"},${line},${clean(f.commit_sha,80)||null},COALESCE(${f.date||null}::timestamptz,NOW()),NOW())
-    ON CONFLICT(fingerprint) DO UPDATE SET last_seen_at=NOW(),description=EXCLUDED.description,file_path=EXCLUDED.file_path,line_number=EXCLUDED.line_number,commit_sha=EXCLUDED.commit_sha`;
+   await sql`INSERT INTO findings(fingerprint,repository_full_name,ecosystem,severity,classification,secret_type,confidence,rule_id,description,file_path,line_number,commit_sha,first_seen_at,last_seen_at)
+    VALUES(${fingerprint},${fullName},${clean(f.ecosystem,80)||"Other Web3"},${severity},${classification},${secretType},${confidence},${clean(f.rule_id,120)||"unknown"},${clean(f.description,240)||null},${clean(f.file_path,700)||"(path unavailable)"},${line},${clean(f.commit_sha,80)||null},COALESCE(${f.date||null}::timestamptz,NOW()),NOW())
+    ON CONFLICT(fingerprint) DO UPDATE SET last_seen_at=NOW(),classification=EXCLUDED.classification,secret_type=EXCLUDED.secret_type,confidence=EXCLUDED.confidence,description=EXCLUDED.description,file_path=EXCLUDED.file_path,line_number=EXCLUDED.line_number,commit_sha=EXCLUDED.commit_sha`;
    inserted++;
   }
   return NextResponse.json({ok:true,run_id:run.id,repositories_received:repositories.length,findings_received:findings.length,findings_upserted:inserted});
