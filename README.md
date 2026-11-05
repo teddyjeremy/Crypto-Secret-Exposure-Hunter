@@ -27,7 +27,7 @@ Set `DATABASE_URL` and `INGEST_TOKEN` in `.env.local`. The database schema is ma
 ### Vercel environment variables
 
 - `DATABASE_URL`: Neon PostgreSQL connection string (already provisioned for this project).
-- `INGEST_TOKEN`: shared secret used by the scanning worker (already provisioned for this project).
+- Scan ingestion uses GitHub Actions OIDC; no shared ingestion secret is required.
 - `GITHUB_DISPATCH_TOKEN`: optional fine-grained GitHub token with Actions: write and Metadata: read on this repository. Required for the dashboard's **Run scan** button.
 
 ### GitHub Actions repository secrets
