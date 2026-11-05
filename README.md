@@ -27,14 +27,15 @@ Set `DATABASE_URL` in `.env.local`. The database schema is managed in Neon and i
 ### Vercel environment variables
 
 - `DATABASE_URL`: Neon PostgreSQL connection string (already provisioned for this project).
-- Scan ingestion uses GitHub Actions OIDC; no shared ingestion secret is required.
 - `GITHUB_DISPATCH_TOKEN`: optional fine-grained GitHub token with Actions: write and Metadata: read on this repository. Required for the dashboard's **Run scan** button.
 
-### GitHub Actions authentication
+### GitHub Actions repository secrets
 
-The worker authenticates to the ingestion API using GitHub Actions OIDC. The API verifies GitHub's signature, issuer, audience, repository, main branch, workflow path and event. No shared `INGEST_TOKEN` or `INGEST_URL` secret is needed.
+Add one secret under **Settings → Secrets and variables → Actions → New repository secret**:
 
-The Vercel project has Deployment Protection enabled. Create a Vercel Automation Bypass secret and save it as the GitHub Actions repository secret `VERCEL_AUTOMATION_BYPASS_SECRET`; the workflow uses it only to reach the protected ingestion endpoint. The dashboard's **Run scan** button separately requires `GITHUB_DISPATCH_TOKEN` in Vercel (fine-grained GitHub token with Actions: write and Metadata: read). Without it, start a scan from the repository's Actions tab.
+- `VERCEL_AUTOMATION_BYPASS_SECRET`: create a Deployment Protection → Automation Bypass secret in the Vercel project and store the same value here. It allows the scheduled worker to reach the SSO-protected Vercel ingestion endpoint.
+
+The workflow obtains a short-lived GitHub OIDC token at runtime. The Vercel API verifies the issuer, audience, repository, main branch, workflow path and allowed event. There is no shared static ingestion token. The ingestion URL is configured in the workflow file.
 
 ## Running scans
 
@@ -50,7 +51,7 @@ Findings are leads, not proof of a valid, active, funded or compromised wallet. 
 
 ## Security model and limitations
 
-- The ingestion API requires a bearer token and validates/limits incoming data.
+- The ingestion API verifies a short-lived GitHub Actions OIDC JWT and validates/limits incoming data.
 - Only safe metadata is stored: repository, ecosystem, rule identifier, path, line, commit, severity, timestamps and a metadata-derived fingerprint.
 - Raw Gitleaks reports and temporary clones are deleted by the worker.
 - Secret scanning can produce false positives and may miss custom or unsupported formats.
