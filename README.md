@@ -34,7 +34,8 @@ Set `DATABASE_URL` and `INGEST_TOKEN` in `.env.local`. The database schema is ma
 
 Add these under **Settings → Secrets and variables → Actions → New repository secret**:
 
-- `INGEST_TOKEN`: use the same value configured in Vercel. Ask the project administrator to rotate/set it if it is unavailable; do not commit it.
+- `INGEST_TOKEN`: same value as the sensitive Vercel `INGEST_TOKEN`.
+- `VERCEL_AUTOMATION_BYPASS_SECRET`: create a Vercel Deployment Protection → Automation Bypass secret for the project and store the same value here. The Vercel app is SSO-protected; this header allows only the trusted Actions worker to reach the ingestion endpoint.
 - `INGEST_URL`: `https://crypto-secret-exposure-hunter.vercel.app/api/ingest`
 
 The scheduled worker uses the workflow-scoped `github.token` for public repository discovery. No wallet credentials are needed.
