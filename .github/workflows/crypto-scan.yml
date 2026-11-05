@@ -52,5 +52,8 @@ jobs:
           go install github.com/zricethezav/gitleaks/v8@v8.24.2
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
+      - name: Run scanner safety tests
+        run: python -m unittest scanner.test_scan
+
       - name: Run public repository scan
         run: python scanner/scan.py
