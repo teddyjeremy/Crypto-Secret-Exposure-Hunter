@@ -28,9 +28,22 @@ ECOSYSTEMS = {
     "Sui": "topic:sui",
     "Aptos": "topic:aptos",
     "Cosmos": "topic:cosmos-sdk",
+    "Injective": "topic:injective",
     "TRON": "topic:tron",
     "NEAR": "topic:near-protocol",
     "Polkadot": "topic:polkadot",
+    "Cardano": "topic:cardano",
+    "XRP Ledger": "topic:xrpl",
+    "Stellar": "topic:stellar",
+    "Algorand": "topic:algorand",
+    "Hedera": "topic:hedera",
+    "Tezos": "topic:tezos",
+    "Filecoin": "topic:filecoin",
+    "Zcash": "topic:zcash",
+    "Monero": "topic:monero",
+    "Kaspa": "topic:kaspa",
+    "Internet Computer": "topic:internet-computer",
+    "MultiversX": "topic:multiversx",
     "Other Web3": "topic:web3",
 }
 MAX_REPO_SIZE_KB = int(os.getenv("MAX_REPO_SIZE_KB", "150000"))
@@ -60,9 +73,11 @@ def headers() -> dict[str, str]:
 
 def discover() -> list[dict[str, Any]]:
     found: dict[str, dict[str, Any]] = {}
+    per_ecosystem = max(1, min(PER_QUERY, MAX_REPOS // max(1, len(ECOSYSTEMS))))
     for index, (ecosystem, query) in enumerate(ECOSYSTEMS.items()):
         if len(found) >= MAX_REPOS:
             break
+        # Allocate a balanced quota so early chains do not starve later ecosystems.
         # Search API is rate-limited. Keep requests below approximately 10/minute.
         if index:
             time.sleep(6.5)
@@ -72,7 +87,7 @@ def discover() -> list[dict[str, Any]]:
                 "q": f"{query} fork:false archived:false stars:>=0",
                 "sort": "updated",
                 "order": "desc",
-                "per_page": min(PER_QUERY, 10),
+                "per_page": min(per_ecosystem, 10),
             },
             headers=headers(),
             timeout=30,
@@ -103,7 +118,7 @@ def discover() -> list[dict[str, Any]]:
 
 def classify(rule_id: str, description: str) -> str:
     value = f"{rule_id} {description}".lower()
-    if any(term in value for term in ("private-key", "private_key", "mnemonic", "seed-phrase", "wallet")):
+    if any(term in value for term in ("private-key", "private_key", "mnemonic", "seed-phrase", "wallet", "keypair", "xprv", "wif")):
         return "critical"
     if any(term in value for term in ("token", "password", "api", "aws", "database", "generic")):
         return "high"
