@@ -13,6 +13,11 @@ from typing import Any
 
 import requests
 
+try:
+    from .classifier import classify_gitleaks_rule
+except ImportError:  # Direct execution: python scanner/scan.py
+    from classifier import classify_gitleaks_rule
+
 API = "https://api.github.com"
 USER_AGENT = "CryptoSecretExposureHunter/1.0 (defensive public repository research)"
 ECOSYSTEMS = {
@@ -122,11 +127,15 @@ def sanitize_report(raw: Any, repo: dict[str, Any]) -> list[dict[str, Any]]:
         fingerprint = hashlib.sha256(
             f"{repo['full_name']}|{rule}|{path}|{commit}|{line}".encode("utf-8")
         ).hexdigest()
+        classification = classify_gitleaks_rule(rule, description)
         safe.append({
             "fingerprint": fingerprint,
             "repository_full_name": repo["full_name"],
             "ecosystem": repo["ecosystem"],
             "severity": classify(rule, description),
+            "classification": classification.category,
+            "secret_type": classification.secret_type,
+            "confidence": classification.confidence,
             "rule_id": rule,
             "description": description,
             "file_path": path,
