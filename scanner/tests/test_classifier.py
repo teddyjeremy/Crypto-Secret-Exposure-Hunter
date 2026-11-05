@@ -1,5 +1,5 @@
 import unittest
-from classifier import classify_text, classify_gitleaks_rule
+from scanner.classifier import classify_text, classify_gitleaks_rule
 
 class ClassificationTests(unittest.TestCase):
     def test_evm_address_is_public(self):
