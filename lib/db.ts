@@ -11,7 +11,7 @@ export async function getDashboardData() {
     (SELECT COUNT(*)::int FROM findings WHERE classification='secret_candidate' AND status NOT IN ('false_positive','remediated')) AS open_findings,
     (SELECT COUNT(*)::int FROM findings WHERE severity='critical' AND classification='secret_candidate' AND status NOT IN ('false_positive','remediated')) AS critical,
     (SELECT COUNT(*)::int FROM scan_runs WHERE status='completed') AS completed_scans`;
-  const runs = await sql`SELECT id,status,trigger_source,started_at,completed_at,repositories_discovered,repositories_scanned,findings_total,created_at FROM scan_runs ORDER BY created_at DESC LIMIT 8`;
+  const runs = await sql`SELECT id,status,trigger_source,started_at,completed_at,repositories_discovered,repositories_scanned,findings_total,summary,created_at FROM scan_runs ORDER BY created_at DESC LIMIT 8`;
   const findings = await sql`SELECT id,fingerprint,repository_full_name,ecosystem,severity,classification,secret_type,confidence,rule_id,file_path,line_number,commit_sha,status,last_seen_at FROM findings WHERE classification <> 'public_information' ORDER BY last_seen_at DESC LIMIT 8`;
   const ecosystems = await sql`SELECT ecosystem,COUNT(*)::int AS count FROM findings WHERE classification='secret_candidate' AND status NOT IN ('false_positive','remediated') GROUP BY ecosystem ORDER BY count DESC LIMIT 8`;
   return { stats, runs, findings, ecosystems };
