@@ -143,6 +143,26 @@ def discover() -> list[dict[str, Any]]:
     return list(found.values())
 
 
+def default_branch_head(repo: dict[str, Any]) -> str | None:
+    """Resolve the exact commit scanned on the default branch."""
+    branch = str(repo.get("default_branch") or "")
+    if not branch:
+        return None
+    try:
+        response = requests.get(
+            f"{API}/repos/{repo['full_name']}/commits/{requests.utils.quote(branch, safe='')}",
+            headers=headers(),
+            timeout=20,
+        )
+        if response.status_code in (403, 429):
+            return None
+        response.raise_for_status()
+        sha = response.json().get("sha")
+        return str(sha)[:40] if isinstance(sha, str) and sha else None
+    except (requests.RequestException, ValueError):
+        return None
+
+
 def classify(rule_id: str, description: str) -> str:
     value = f"{rule_id} {description}".lower()
     if any(term in value for term in ("private-key", "private_key", "mnemonic", "seed-phrase", "wallet", "keypair", "xprv", "wif")):
@@ -244,7 +264,7 @@ def send_event(event: str, run: dict[str, Any], summary: dict[str, Any],
         "repository": ({
             key: repo.get(key) for key in (
                 "full_name", "github_repo_id", "html_url", "ecosystem", "description", "stars",
-                "default_branch", "pushed_at", "status"
+                "default_branch", "pushed_at", "head_sha", "status"
             )
         } if repo else None),
         "findings": (findings or [])[:500],
@@ -294,6 +314,8 @@ def main() -> None:
     send_event("progress", run, summary)
     print("Discovering public repositories by ecosystem metadata.")
     repositories = discover()
+    for repository in repositories:
+        repository["head_sha"] = default_branch_head(repository)
     registry_payload = {"event": "registry", "repository_names": [r["full_name"] for r in repositories]}
     registry_headers = {"Content-Type": "application/json", "x-vercel-protection-bypass": VERCEL_BYPASS}
     if WORKER_INGEST_TOKEN:
@@ -307,8 +329,8 @@ def main() -> None:
     discovered_count = len(repositories)
     repositories = [r for r in repositories if not (
         previous.get(r["full_name"], {}).get("latest_status") == "completed"
-        and (previous.get(r["full_name"], {}).get("last_pushed_at") or "").replace("Z", "+00:00")
-            == (r.get("pushed_at") or "").replace("Z", "+00:00")
+        and bool(r.get("head_sha"))
+        and previous.get(r["full_name"], {}).get("last_scanned_commit") == r.get("head_sha")
     )]
     run["repositories_discovered"] = discovered_count
     summary.update({
