@@ -9,7 +9,8 @@ This worker runs in GitHub Actions, not inside Vercel serverless functions.
 - Sends only an allow-listed set of sanitized metadata to the authenticated ingestion API.
 
 Required Actions secrets:
-- `INGEST_URL`: Vercel `/api/ingest` endpoint.
-- `INGEST_TOKEN`: same value as Vercel's sensitive `INGEST_TOKEN`.
+- `VERCEL_AUTOMATION_BYPASS_SECRET`: Vercel Deployment Protection automation-bypass secret.
+
+The worker requests a short-lived GitHub Actions OIDC token. The Vercel ingestion API validates its issuer, audience, repository, branch, workflow path and event. No static ingestion token is used.
 
 The worker never imports or uses detected credentials, derives wallet addresses, checks balances, authenticates, signs transactions or transfers funds.
