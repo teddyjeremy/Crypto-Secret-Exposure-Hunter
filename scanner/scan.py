@@ -64,6 +64,8 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 INGEST_URL = os.getenv("INGEST_URL", "").strip()
 OIDC_AUDIENCE = "crypto-secret-exposure-hunter"
 VERCEL_BYPASS = os.getenv("VERCEL_AUTOMATION_BYPASS_SECRET", "").strip()
+WORKER_INGEST_TOKEN = os.getenv("WORKER_INGEST_TOKEN", "").strip()
+WORKER_STATE_FILE = os.getenv("WORKER_STATE_FILE", "/var/data/scan-state.json")
 
 
 def utc_now() -> str:
@@ -132,6 +134,7 @@ def discover() -> list[dict[str, Any]]:
                 "stars": int(item.get("stargazers_count") or 0),
                 "default_branch": item.get("default_branch", ""),
                 "size_kb": size_kb,
+                "pushed_at": item.get("pushed_at"),
                 "status": "pending",
             }
             if len(found) >= MAX_REPOS:
@@ -245,14 +248,12 @@ def send_event(event: str, run: dict[str, Any], summary: dict[str, Any],
         } if repo else None),
         "findings": (findings or [])[:500],
     }
-    identity_token = github_oidc_token()
-    response = requests.post(
-        INGEST_URL,
-        headers={
-            "Authorization": f"Bearer {identity_token}",
-            "Content-Type": "application/json",
-            "x-vercel-protection-bypass": VERCEL_BYPASS,
-        },
+    auth_headers = {"Content-Type": "application/json", "x-vercel-protection-bypass": VERCEL_BYPASS}
+    if WORKER_INGEST_TOKEN:
+        auth_headers["x-worker-token"] = WORKER_INGEST_TOKEN
+    else:
+        auth_headers["Authorization"] = f"Bearer {github_oidc_token()}"
+    response = requests.post(INGEST_URL, headers=auth_headers,
         json=payload,
         timeout=60,
     )
@@ -264,7 +265,9 @@ def main() -> None:
     if not INGEST_URL.startswith("https://"):
         raise RuntimeError("INGEST_URL must be an HTTPS endpoint.")
     if not VERCEL_BYPASS:
-        raise RuntimeError("Add VERCEL_AUTOMATION_BYPASS_SECRET to GitHub Actions secrets.")
+        raise RuntimeError("Set VERCEL_AUTOMATION_BYPASS_SECRET for the protected Vercel ingestion endpoint.")
+    if not WORKER_INGEST_TOKEN and not os.getenv("ACTIONS_ID_TOKEN_REQUEST_URL"):
+        raise RuntimeError("Set WORKER_INGEST_TOKEN for a hosted worker or run inside GitHub Actions.")
 
     run_id = str(uuid.uuid4())
     started = utc_now()
@@ -290,6 +293,14 @@ def main() -> None:
     send_event("progress", run, summary)
     print("Discovering public repositories by ecosystem metadata.")
     repositories = discover()
+    state: dict[str, str] = {}
+    if WORKER_INGEST_TOKEN:
+        try:
+            state = json.loads(Path(WORKER_STATE_FILE).read_text(encoding="utf-8"))
+            if not isinstance(state, dict): state = {}
+        except (OSError, json.JSONDecodeError):
+            state = {}
+        repositories = [r for r in repositories if state.get(r["full_name"]) != (r.get("pushed_at") or "")]
     run["repositories_discovered"] = len(repositories)
     summary.update({
         "phase": "scanning",
@@ -322,6 +333,10 @@ def main() -> None:
         except Exception:
             status, findings = "worker_error", []
         repo["status"] = status
+        if WORKER_INGEST_TOKEN and status == "completed":
+            state[repo["full_name"]] = repo.get("pushed_at") or ""
+            Path(WORKER_STATE_FILE).parent.mkdir(parents=True, exist_ok=True)
+            Path(WORKER_STATE_FILE).write_text(json.dumps(state), encoding="utf-8")
         scanned += int(status == "completed")
         errors[status] = errors.get(status, 0) + 1
         remaining = max(0, 3000 - len(all_findings))
