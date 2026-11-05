@@ -5,7 +5,7 @@ export function RunScanButton() {
  const [busy,setBusy]=useState(false); const [message,setMessage]=useState("");
  async function run(){
   setBusy(true);setMessage("");
-  try { const r=await fetch("/api/scan",{method:"POST"}); const data=await r.json(); if(!r.ok) throw new Error(data.error||"Could not start scan"); setMessage("Scan queued in GitHub Actions."); }
+  try { const r=await fetch("/api/scan",{method:"POST"}); const data=await r.json(); if(!r.ok) throw new Error(data.error||"Could not start scan"); setMessage("Scan queued. Live repository progress will appear on the dashboard."); }
   catch(e){setMessage(e instanceof Error?e.message:"Request failed");}
   finally{setBusy(false);}
  }
