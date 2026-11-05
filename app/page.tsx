@@ -39,7 +39,7 @@ export default async function Home(){
       {["No private-key values stored","No wallet imports or authentication","No address derivation or balance checks","No signing or fund transfers","Private disclosure drafts only"].map((x,i)=><div key={x} style={{display:"flex",gap:9,alignItems:"center",fontSize:11,color:"#a9b8c5"}}><span style={{color:"var(--green)"}}>✓</span>{x}</div>)}
      </div>
     </div>
-    <div className="panel"><div className="panel-head"><div className="panel-title">Worker status</div><span className="badge medium">ACTION REQUIRED</span></div><div style={{fontSize:11,color:"var(--muted)",lineHeight:1.7}}>Configure the GitHub Actions secrets described in Configuration to enable scheduled scans and result ingestion.</div><Link href="/settings" className="btn secondary" style={{marginTop:13}}>View setup <ArrowUpRight size={13}/></Link></div>
+    <div className="panel"><div className="panel-head"><div className="panel-title">Scheduled scanning</div><span className="badge new">FREE WORKFLOW</span></div><div style={{fontSize:11,color:"var(--muted)",lineHeight:1.7}}>GitHub Actions checks for new or changed public repositories every 30 minutes. Previously scanned repositories with no new pushes are skipped. Results stream into Neon as each repository finishes.</div><Link href="/settings" className="btn secondary" style={{marginTop:13}}>View setup <ArrowUpRight size={13}/></Link></div>
    </div>
   </section>
   <div className="footer-note">Defensive research only · Findings are heuristic leads, not proof of wallet compromise · Last page refresh: {new Date().toLocaleString()}</div>
