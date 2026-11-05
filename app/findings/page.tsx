@@ -37,7 +37,7 @@ export default async function FindingsPage({searchParams}:{searchParams:Promise<
  <a className={`btn ${!selectedChain?"":"secondary"}`} href="/findings">All chains ({rows.length})</a>
  {chains.map(chain=><a key={chain} className={`btn ${selectedChain===chain?"":"secondary"}`} href={`/findings?chain=${encodeURIComponent(chain)}`}>{chain.toUpperCase()} ({rows.filter(f=>String(f.ecosystem||"unknown").toLowerCase()===chain).length})</a>)}
  </div></div>
- <div className="panel"><div className="panel-head"><div className="panel-title">{displayChain?`${displayChain.toUpperCase()} repository groups`:"Repository groups"}</div><span className="panel-kicker">MAX 500 · FILE PATHS AND LINE NUMBERS</span></div>
+ <div className="panel"><div className="panel-head"><div className="panel-title">{displayChain?`${displayChain.toUpperCase()} repository groups`:"Repository groups"}</div><span className="panel-kicker">UP TO 100 LATEST FINDINGS PER REPOSITORY · FILE PATHS AND LINES</span></div>
  {repositories.length?<div style={{display:"grid",gap:10,padding:14}}>{repositories.map(([repo,findings],index)=>{
  const candidates=findings.filter(f=>f.classification==="secret_candidate").length;
  return <details key={repo} open={index===0} style={{border:"1px solid var(--border)",borderRadius:10,background:"rgba(255,255,255,.015)",overflow:"hidden"}}>
