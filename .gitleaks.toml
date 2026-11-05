@@ -18,3 +18,27 @@ id = "private-key-context-hex"
 description = "Hex private key in explicitly credential-labelled context"
 regex = '''(?i)(?:private[_ -]?key|secret[_ -]?key)\s*[:=]\s*["']?(?:0x)?[a-f0-9]{64}'''
 keywords = ["private_key", "private key", "secret_key"]
+
+[[rules]]
+id = "solana-base58-private-key"
+description = "Solana base58 private key assignment"
+regex = '''(?i)(solana|secretKey|privateKey|keypair)[^\r\n]{0,40}[=:]\s*["']?([1-9A-HJ-NP-Za-km-z]{64,88})'''
+secretGroup = 2
+entropy = 3.5
+keywords = ["solana", "secretKey", "privateKey", "keypair"]
+
+[[rules]]
+id = "evm-private-key"
+description = "Ethereum or EVM private key assignment"
+regex = '''(?i)(ethereum|eth|evm|private[_-]?key|secret[_-]?key)[^\r\n]{0,40}[=:]\s*["']?(0x[a-f0-9]{64})'''
+secretGroup = 2
+entropy = 3.5
+keywords = ["ethereum", "eth", "evm", "private_key", "secret_key"]
+
+[[rules]]
+id = "bitcoin-wif-private-key"
+description = "Bitcoin Wallet Import Format private key assignment"
+regex = '''(?i)(bitcoin|btc|wif|private[_-]?key)[^\r\n]{0,40}[=:]\s*["']?([5KL][1-9A-HJ-NP-Za-km-z]{50,51})'''
+secretGroup = 2
+entropy = 3.5
+keywords = ["bitcoin", "btc", "wif", "private_key"]
