@@ -30,7 +30,7 @@ ECOSYSTEMS = {
 }
 MAX_REPO_SIZE_KB = int(os.getenv("MAX_REPO_SIZE_KB", "150000"))
 REPO_TIMEOUT = int(os.getenv("REPO_TIMEOUT_SECONDS", "240"))
-MAX_REPOS = int(os.getenv("MAX_REPOS", "30"))
+MAX_REPOS = min(max(int(os.getenv("MAX_REPOS", "30")), 1), 50)
 PER_QUERY = int(os.getenv("PER_QUERY", "8"))
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 INGEST_URL = os.getenv("INGEST_URL", "").strip()
