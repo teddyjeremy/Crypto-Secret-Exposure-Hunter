@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS findings (
   id BIGSERIAL PRIMARY KEY, fingerprint TEXT NOT NULL UNIQUE,
   repository_full_name TEXT NOT NULL REFERENCES repositories(full_name) ON DELETE CASCADE,
   ecosystem TEXT NOT NULL, severity TEXT NOT NULL CHECK (severity IN ('critical','high','medium','low')),
-  classification TEXT NOT NULL DEFAULT 'secret_candidate' CHECK (classification IN ('public_information','secret_candidate','uncertain')),
+  classification TEXT NOT NULL DEFAULT 'uncertain' CHECK (classification IN ('public_information','secret_candidate','uncertain')),
   secret_type TEXT, confidence TEXT NOT NULL DEFAULT 'medium' CHECK (confidence IN ('low','medium','high')),
   rule_id TEXT NOT NULL, description TEXT, file_path TEXT NOT NULL, line_number INTEGER,
   commit_sha TEXT, first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
