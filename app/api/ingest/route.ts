@@ -41,7 +41,7 @@ export async function POST(request:NextRequest){
   try{
    const sql=getDb();
    await sql`INSERT INTO scan_runs(id,status,trigger_source,started_at,completed_at,repositories_discovered,repositories_scanned,findings_total,summary,error_message)
-    VALUES(${clean(run.id,100)},${status},'github-actions',${run.started_at||null},${body.event==="complete"?(run.completed_at||new Date().toISOString()):null},${integer(run.repositories_discovered)||0},${integer(run.repositories_scanned)||0},${integer(run.findings_total)||0},${JSON.stringify(summary)}::jsonb,NULL)
+    VALUES(${clean(run.id,100)},${status},${clean(run.trigger_source,30)||"github-actions"},${run.started_at||null},${body.event==="complete"?(run.completed_at||new Date().toISOString()):null},${integer(run.repositories_discovered)||0},${integer(run.repositories_scanned)||0},${integer(run.findings_total)||0},${JSON.stringify(summary)}::jsonb,NULL)
     ON CONFLICT(id) DO UPDATE SET status=EXCLUDED.status,completed_at=EXCLUDED.completed_at,repositories_discovered=EXCLUDED.repositories_discovered,repositories_scanned=EXCLUDED.repositories_scanned,findings_total=EXCLUDED.findings_total,summary=EXCLUDED.summary`;
    if(eventRepo){
     const fullName=clean(eventRepo.full_name,200);
