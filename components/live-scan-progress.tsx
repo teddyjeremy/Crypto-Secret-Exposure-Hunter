@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type ScanRun = {
   id: string;
@@ -26,6 +27,7 @@ const color = (status?: string) => status === "completed" ? "#34d399" : status =
 export function LiveScanProgress({ initialRun }: { initialRun?: ScanRun | null }) {
   const [run, setRun] = useState<ScanRun | null>(initialRun || null);
   const [updated, setUpdated] = useState("");
+  const router = useRouter();
   useEffect(() => {
     let alive = true;
     const refresh = async () => {
@@ -36,13 +38,14 @@ export function LiveScanProgress({ initialRun }: { initialRun?: ScanRun | null }
         if (alive && data.run) {
           setRun(data.run);
           setUpdated(new Date().toLocaleTimeString());
+          router.refresh();
         }
       } catch { /* Keep the last successfully received progress snapshot. */ }
     };
     refresh();
     const timer = window.setInterval(refresh, 5000);
     return () => { alive = false; window.clearInterval(timer); };
-  }, []);
+  }, [router]);
 
   if (!run) return null;
   const summary = run.summary || {};
