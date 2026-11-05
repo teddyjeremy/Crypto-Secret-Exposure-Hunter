@@ -23,15 +23,25 @@ USER_AGENT = "CryptoSecretExposureHunter/1.0 (defensive public repository resear
 ECOSYSTEMS = {
     "Solana": "topic:solana",
     "Ethereum / EVM": "topic:ethereum",
+    "Base": "topic:base-chain",
+    "Polygon": "topic:polygon",
+    "Arbitrum": "topic:arbitrum",
+    "Optimism": "topic:optimism",
+    "BNB Chain": "topic:binance-smart-chain",
+    "Avalanche": "topic:avalanche",
     "Bitcoin": "topic:bitcoin",
     "TON": "topic:ton",
     "Sui": "topic:sui",
     "Aptos": "topic:aptos",
     "Cosmos": "topic:cosmos-sdk",
     "Injective": "topic:injective",
+    "Osmosis": "topic:osmosis",
+    "Sei": "topic:sei",
+    "Celestia": "topic:celestia",
     "TRON": "topic:tron",
     "NEAR": "topic:near-protocol",
     "Polkadot": "topic:polkadot",
+    "Kusama": "topic:kusama",
     "Cardano": "topic:cardano",
     "XRP Ledger": "topic:xrpl",
     "Stellar": "topic:stellar",
@@ -48,7 +58,7 @@ ECOSYSTEMS = {
 }
 MAX_REPO_SIZE_KB = int(os.getenv("MAX_REPO_SIZE_KB", "150000"))
 REPO_TIMEOUT = int(os.getenv("REPO_TIMEOUT_SECONDS", "240"))
-MAX_REPOS = min(max(int(os.getenv("MAX_REPOS", "30")), 1), 50)
+MAX_REPOS = min(max(int(os.getenv("MAX_REPOS", "40")), 1), 80)
 PER_QUERY = int(os.getenv("PER_QUERY", "8"))
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 INGEST_URL = os.getenv("INGEST_URL", "").strip()
