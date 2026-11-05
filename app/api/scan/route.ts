@@ -11,5 +11,5 @@ export async function POST(){
   body:JSON.stringify({ref:"main",inputs:{max_repos:"40"}}),cache:"no-store"
  });
  if(!response.ok){const body=await response.text();return NextResponse.json({error:`GitHub rejected workflow dispatch (HTTP ${response.status}). Check token permissions and workflow file.`,detail:body.slice(0,300)},{status:502});}
- return NextResponse.json({ok:true,message:"Scan workflow queued. Results will appear after the worker finishes."});
+ return NextResponse.json({ok:true,message:"Scan workflow queued. Live repository progress will appear on the dashboard."});
 }
