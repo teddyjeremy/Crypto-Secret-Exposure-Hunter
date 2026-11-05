@@ -12,13 +12,13 @@ export async function getDashboardData() {
     (SELECT COUNT(*)::int FROM findings WHERE severity='critical' AND classification='secret_candidate' AND status NOT IN ('false_positive','remediated')) AS critical,
     (SELECT COUNT(*)::int FROM scan_runs WHERE status='completed') AS completed_scans`;
   const runs = await sql`SELECT id,status,trigger_source,started_at,completed_at,repositories_discovered,repositories_scanned,findings_total,summary,created_at FROM scan_runs ORDER BY created_at DESC LIMIT 8`;
-  const findings = await sql`SELECT id,fingerprint,repository_full_name,ecosystem,severity,classification,secret_type,confidence,rule_id,file_path,line_number,commit_sha,status,last_seen_at FROM findings WHERE classification <> 'public_information' ORDER BY last_seen_at DESC LIMIT 8`;
+  const findings = await sql`WITH ranked AS (SELECT id,fingerprint,repository_full_name,ecosystem,severity,classification,secret_type,confidence,rule_id,file_path,line_number,commit_sha,status,last_seen_at,ROW_NUMBER() OVER (PARTITION BY repository_full_name ORDER BY last_seen_at DESC) AS repo_rank FROM findings WHERE classification <> 'public_information') SELECT id,fingerprint,repository_full_name,ecosystem,severity,classification,secret_type,confidence,rule_id,file_path,line_number,commit_sha,status,last_seen_at FROM ranked WHERE repo_rank <= 2 ORDER BY last_seen_at DESC LIMIT 12`;
   const ecosystems = await sql`SELECT ecosystem,COUNT(*)::int AS count FROM findings WHERE classification='secret_candidate' AND status NOT IN ('false_positive','remediated') GROUP BY ecosystem ORDER BY count DESC LIMIT 8`;
   return { stats, runs, findings, ecosystems };
 }
 export async function getFindings(filters?: {severity?: string; status?: string; search?: string}) {
   const sql = getDb();
-  const rows = await sql`SELECT id,fingerprint,repository_full_name,ecosystem,severity,classification,secret_type,confidence,rule_id,description,file_path,line_number,commit_sha,status,first_seen_at,last_seen_at,triage_notes FROM findings WHERE classification <> 'public_information' ORDER BY last_seen_at DESC LIMIT 500`;
+  const rows = await sql`WITH ranked AS (SELECT id,fingerprint,repository_full_name,ecosystem,severity,classification,secret_type,confidence,rule_id,description,file_path,line_number,commit_sha,status,first_seen_at,last_seen_at,triage_notes,ROW_NUMBER() OVER (PARTITION BY repository_full_name ORDER BY last_seen_at DESC) AS repo_rank FROM findings WHERE classification <> 'public_information') SELECT id,fingerprint,repository_full_name,ecosystem,severity,classification,secret_type,confidence,rule_id,description,file_path,line_number,commit_sha,status,first_seen_at,last_seen_at,triage_notes FROM ranked WHERE repo_rank <= 100 ORDER BY last_seen_at DESC`;
   return rows.filter((row:any) =>
     (!filters?.severity || row.severity===filters.severity) &&
     (!filters?.status || row.status===filters.status) &&
