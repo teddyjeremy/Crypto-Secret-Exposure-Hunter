@@ -35,7 +35,7 @@ export async function POST(request:NextRequest){
   const names=Array.isArray(body.repository_names)?body.repository_names.slice(0,100).map((v:unknown)=>clean(v,200)).filter((v:string)=>/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(v)):[];
   try{
    const sql=getDb();
-   const rows=names.length?await sql\`SELECT full_name,last_pushed_at,latest_status,last_scanned_commit FROM repositories WHERE full_name = ANY(\${names}::text[])\`:[];
+   const rows=names.length?await sql`SELECT full_name,last_pushed_at,latest_status,last_scanned_commit FROM repositories WHERE full_name = ANY(\${names}::text[])`:[];
    return NextResponse.json({ok:true,repositories:rows},{headers:{"Cache-Control":"no-store"}});
   }catch{return NextResponse.json({error:"Repository registry unavailable."},{status:503});}
  }
@@ -54,9 +54,9 @@ export async function POST(request:NextRequest){
    if(eventRepo){
     const fullName=clean(eventRepo.full_name,200);
     if(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(fullName)){
-     await sql\`INSERT INTO repositories(full_name,github_repo_id,html_url,ecosystem,description,stars,default_branch,last_pushed_at,last_scanned_at,latest_status,updated_at)
+     await sql`INSERT INTO repositories(full_name,github_repo_id,html_url,ecosystem,description,stars,default_branch,last_pushed_at,last_scanned_at,latest_status,updated_at)
       VALUES(\${fullName},\${integer(eventRepo.github_repo_id)},\${clean(eventRepo.html_url,500)},\${clean(eventRepo.ecosystem,80)||"Other Web3"},\${clean(eventRepo.description,300)||null},\${integer(eventRepo.stars)||0},\${clean(eventRepo.default_branch,120)||null},\${eventRepo.pushed_at||null},CASE WHEN \${clean(eventRepo.status,30)||"pending"}=\${"completed"} THEN NOW() ELSE NULL END,\${clean(eventRepo.status,30)||"pending"},NOW())
-      ON CONFLICT(full_name) DO UPDATE SET github_repo_id=COALESCE(EXCLUDED.github_repo_id,repositories.github_repo_id),html_url=EXCLUDED.html_url,ecosystem=EXCLUDED.ecosystem,description=EXCLUDED.description,stars=EXCLUDED.stars,default_branch=EXCLUDED.default_branch,last_pushed_at=CASE WHEN EXCLUDED.latest_status=\${"completed"} THEN EXCLUDED.last_pushed_at ELSE repositories.last_pushed_at END,last_scanned_at=CASE WHEN EXCLUDED.latest_status=\${"completed"} THEN NOW() ELSE repositories.last_scanned_at END,latest_status=EXCLUDED.latest_status,updated_at=NOW()\`;
+      ON CONFLICT(full_name) DO UPDATE SET github_repo_id=COALESCE(EXCLUDED.github_repo_id,repositories.github_repo_id),html_url=EXCLUDED.html_url,ecosystem=EXCLUDED.ecosystem,description=EXCLUDED.description,stars=EXCLUDED.stars,default_branch=EXCLUDED.default_branch,last_pushed_at=CASE WHEN EXCLUDED.latest_status=\${"completed"} THEN EXCLUDED.last_pushed_at ELSE repositories.last_pushed_at END,last_scanned_at=CASE WHEN EXCLUDED.latest_status=\${"completed"} THEN NOW() ELSE repositories.last_scanned_at END,latest_status=EXCLUDED.latest_status,updated_at=NOW()`;
     }
    }
    let upserted=0;
