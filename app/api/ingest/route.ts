@@ -1,11 +1,27 @@
 import { NextRequest,NextResponse } from "next/server";
+import { createRemoteJWKSet,jwtVerify } from "jose";
 import { getDb } from "@/lib/db";
 export const runtime="nodejs";
 const clean=(v:unknown,max=500)=>typeof v==="string"?v.slice(0,max):"";
 const integer=(v:unknown)=>typeof v==="number"&&Number.isInteger(v)&&v>=0?v:null;
+const GITHUB_ISSUER="https://token.actions.githubusercontent.com";
+const GITHUB_AUDIENCE="crypto-secret-exposure-hunter";
+const EXPECTED_REPOSITORY="teddyjeremy/Crypto-Secret-Exposure-Hunter";
+const EXPECTED_WORKFLOW=`${EXPECTED_REPOSITORY}/.github/workflows/crypto-scan.yml@refs/heads/main`;
+const JWKS=createRemoteJWKSet(new URL(`${GITHUB_ISSUER}/.well-known/jwks`));
+async function authorized(request:NextRequest):Promise<boolean>{
+ const header=request.headers.get("authorization")||"";
+ const token=header.startsWith("Bearer ")?header.slice(7):"";
+ if(!token)return false;
+ try{
+  const {payload}=await jwtVerify(token,JWKS,{issuer:GITHUB_ISSUER,audience:GITHUB_AUDIENCE});
+  return payload.repository===EXPECTED_REPOSITORY&&payload.ref==="refs/heads/main"
+   &&payload.workflow_ref===EXPECTED_WORKFLOW
+   &&["schedule","workflow_dispatch"].includes(String(payload.event_name));
+ }catch{return false;}
+}
 export async function POST(request:NextRequest){
- const expected=process.env.INGEST_TOKEN;
- if(!expected||request.headers.get("authorization")!==`Bearer ${expected}`)return NextResponse.json({error:"Unauthorized"},{status:401});
+ if(!await authorized(request))return NextResponse.json({error:"Unauthorized workflow identity"},{status:401});
  const length=Number(request.headers.get("content-length")||0);
  if(length>2_000_000)return NextResponse.json({error:"Payload too large"},{status:413});
  let body:any;try{body=await request.json();}catch{return NextResponse.json({error:"Invalid JSON"},{status:400});}
