@@ -96,7 +96,7 @@ def github_oidc_token() -> str:
         raise RuntimeError("GitHub Actions did not issue an OIDC token.")
     return value
 
-def discover() -> list[dict[str, Any]]:
+def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
     found: dict[str, dict[str, Any]] = {}
     per_ecosystem = max(1, min(PER_QUERY, MAX_REPOS // max(1, len(ECOSYSTEMS))))
     for index, (ecosystem, query) in enumerate(ECOSYSTEMS.items()):
@@ -140,6 +140,9 @@ def discover() -> list[dict[str, Any]]:
             }
             if len(found) >= MAX_REPOS:
                 break
+        # Publish progress after each ecosystem query instead of leaving the dashboard frozen.
+        if progress_callback:
+            progress_callback(index + 1, len(ECOSYSTEMS), ecosystem, len(found))
     return list(found.values())
 
 
@@ -313,7 +316,14 @@ def main() -> None:
     }
     send_event("progress", run, summary)
     print("Discovering public repositories by ecosystem metadata.")
-    repositories = discover()
+
+    def report_discovery_progress(index: int, total: int, ecosystem: str, found_count: int) -> None:
+        summary["phase"] = "discovering"
+        summary["message"] = f"Searching {ecosystem} ({index}/{total} ecosystems); {found_count} repositories found so far."
+        summary["progress_percent"] = round((index / max(1, total)) * 10)
+        send_event("progress", run, summary)
+
+    repositories = discover(report_discovery_progress)
     for repository in repositories:
         repository["head_sha"] = default_branch_head(repository)
     registry_payload = {"event": "registry", "repository_names": [r["full_name"] for r in repositories]}
