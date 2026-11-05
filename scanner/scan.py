@@ -208,7 +208,7 @@ def scan_repository(repo: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
         try:
             result = subprocess.run(
                 [
-                    "gitleaks", "git", str(clone_path),
+                    "gitleaks", "detect", "--source", str(clone_path),
                     "--config", str(Path.cwd() / ".gitleaks.toml"),
                     "--redact", "--report-format", "json",
                     "--report-path", str(report_path), "--exit-code", "0",
