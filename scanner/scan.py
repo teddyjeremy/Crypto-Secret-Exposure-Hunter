@@ -35,6 +35,7 @@ PER_QUERY = int(os.getenv("PER_QUERY", "8"))
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 INGEST_URL = os.getenv("INGEST_URL", "").strip()
 INGEST_TOKEN = os.getenv("INGEST_TOKEN", "").strip()
+VERCEL_BYPASS = os.getenv("VERCEL_AUTOMATION_BYPASS_SECRET", "").strip()
 
 
 def utc_now() -> str:
@@ -228,7 +229,11 @@ def main() -> None:
     }
     response = requests.post(
         INGEST_URL,
-        headers={"Authorization": f"Bearer {INGEST_TOKEN}", "Content-Type": "application/json"},
+        headers={
+            "Authorization": f"Bearer {INGEST_TOKEN}",
+            "Content-Type": "application/json",
+            **({"x-vercel-protection-bypass": VERCEL_BYPASS} if VERCEL_BYPASS else {}),
+        },
         json=payload,
         timeout=90,
     )
