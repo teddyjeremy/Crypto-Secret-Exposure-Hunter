@@ -14,6 +14,7 @@ import os
 import re
 import socket
 import time
+import uuid
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse, urldefrag
 
@@ -26,16 +27,18 @@ TIMEOUT = int(os.getenv("WEB_TIMEOUT_SECONDS", "12"))
 DELAY = float(os.getenv("WEB_REQUEST_DELAY", "0.5"))
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 OUTPUT = os.getenv("WEB_SCAN_OUTPUT", "web-scan-results.json")
+WEB_INGEST_URL = os.getenv("WEB_INGEST_URL", "").strip()
+VERCEL_BYPASS = os.getenv("VERCEL_AUTOMATION_BYPASS_SECRET", "").strip()
 
 PATTERNS = [
     ("private_key_pem", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"), "critical", "high"),
-    ("solana_secret_key_array", re.compile(r'"(?:secretKey|secret_key|privateKey|private_key)"\\s*:\\s*\\[[0-9\\s,]{120,500}\\]'), "critical", "medium"),
-    ("solana_secret_key_base58", re.compile(r'"(?:secretKey|secret_key|privateKey|private_key)"\\s*:\\s*"[1-9A-HJ-NP-Za-km-z]{80,100}"'), "critical", "medium"),
-    ("mnemonic_assignment", re.compile(r'"(?:mnemonic|seedPhrase|seed_phrase|recoveryPhrase)"\\s*:\\s*"[^"]{35,250}"', re.I), "critical", "medium"),
+    ("solana_secret_key_array", re.compile(r'"(?:secretKey|secret_key|privateKey|private_key)"\s*:\s*\[[0-9\s,]{120,500}\]'), "critical", "medium"),
+    ("solana_secret_key_base58", re.compile(r'"(?:secretKey|secret_key|privateKey|private_key)"\s*:\s*"[1-9A-HJ-NP-Za-km-z]{80,100}"'), "critical", "medium"),
+    ("mnemonic_assignment", re.compile(r'"(?:mnemonic|seedPhrase|seed_phrase|recoveryPhrase)"\s*:\s*"[^"]{35,250}"', re.I), "critical", "medium"),
     ("aws_access_key_id", re.compile(r'AKIA[0-9A-Z]{16}'), "high", "medium"),
     ("github_token", re.compile(r'gh[pousr]_[A-Za-z0-9]{30,255}'), "high", "medium"),
-    ("generic_secret_assignment", re.compile(r'(?i)(?:client_secret|api_secret|access_token|private_token)\\s*[:=]\\s*["\'][^"\']{16,}["\']'), "high", "low"),
-    ("database_connection_string", re.compile(r'(?i)(?:postgres(?:ql)?|mysql)://[^\\s"\']{12,}'), "high", "low"),
+    ("generic_secret_assignment", re.compile(r'(?i)(?:client_secret|api_secret|access_token|private_token)\s*[:=]\s*["\'][^"\']{16,}["\']'), "high", "low"),
+    ("database_connection_string", re.compile(r'(?i)(?:postgres(?:ql)?|mysql)://[^\s"\']{12,}'), "high", "low"),
 ]
 
 class AssetParser(HTMLParser):
@@ -113,7 +116,7 @@ def fetch(url: str, root_host: str):
     return None
 
 def line_for(text: str, offset: int) -> int:
-    return text.count("\\n", 0, offset) + 1
+    return text.count("\n", 0, offset) + 1
 
 def inspect_text(text: str, asset_url: str, findings: list[dict]):
     for rule, pattern, severity, confidence in PATTERNS:
@@ -163,7 +166,7 @@ def scan_site(site: str) -> dict:
         data, ctype, actual = result
         text = data.decode("utf-8", errors="replace")
         inspect_text(text, actual, findings)
-        map_match = re.search(r'[#@]\\s*sourceMappingURL=([^\\s*]+)', text)
+        map_match = re.search(r'[#@]\s*sourceMappingURL=([^\s*]+)', text)
         if map_match and len(assets) < MAX_ASSETS:
             map_url = safe_url(urljoin(actual, map_match.group(1)), host)
             if map_url and map_url not in assets:
@@ -225,6 +228,27 @@ def main():
     with open(OUTPUT, "w", encoding="utf-8") as file:
         json.dump(payload, file, indent=2)
     print(json.dumps({k: v for k, v in payload.items() if k != "results"}))
+    if WEB_INGEST_URL:
+        request_url = os.getenv("ACTIONS_ID_TOKEN_REQUEST_URL", "")
+        request_token = os.getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "")
+        if not request_url or not request_token or not VERCEL_BYPASS:
+            raise RuntimeError("Website ingestion requires GitHub Actions OIDC and Vercel bypass configuration.")
+        token_response = requests.get(request_url, headers={"Authorization": f"Bearer {request_token}"},
+                                      params={"audience": "crypto-secret-exposure-hunter"}, timeout=20)
+        token_response.raise_for_status()
+        oidc_token = token_response.json().get("value")
+        if not isinstance(oidc_token, str) or not oidc_token:
+            raise RuntimeError("GitHub Actions did not issue an OIDC token.")
+        ingest = requests.post(WEB_INGEST_URL,
+            headers={"Authorization": f"Bearer {oidc_token}",
+                     "x-vercel-protection-bypass": VERCEL_BYPASS,
+                     "Content-Type": "application/json"},
+            json={"run_id": str(uuid.uuid4()), "sites_discovered": payload["sites_discovered"],
+                  "sites_scanned": payload["sites_scanned"], "results": results},
+            timeout=60)
+        if ingest.status_code != 200:
+            raise RuntimeError(f"Website result ingestion failed with HTTP {ingest.status_code}.")
+        print("Redacted website scan results ingested into the dashboard.")
 
 if __name__ == "__main__":
     main()
