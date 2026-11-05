@@ -229,56 +229,22 @@ def scan_repository(repo: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
         return "completed", sanitize_report(raw, repo)
 
 
-def main() -> None:
-    if not INGEST_URL.startswith("https://"):
-        raise RuntimeError("INGEST_URL must be an HTTPS endpoint.")
-    if not VERCEL_BYPASS:
-        raise RuntimeError("Add VERCEL_AUTOMATION_BYPASS_SECRET to GitHub Actions secrets.")
-    run_id = str(uuid.uuid4())
-    started = utc_now()
-    print("Discovering public repositories by ecosystem metadata.")
-    repositories = discover()
-    all_findings: list[dict[str, Any]] = []
-    scanned = 0
-    errors: dict[str, int] = {}
-    for index, repo in enumerate(repositories, start=1):
-        print(f"[{index}/{len(repositories)}] Scanning {repo['full_name']} ({repo['ecosystem']})")
-        try:
-            status, findings = scan_repository(repo)
-        except Exception:
-            status, findings = "worker_error", []
-        repo["status"] = status
-        scanned += int(status == "completed")
-        errors[status] = errors.get(status, 0) + 1
-        all_findings.extend(findings)
-        # Cap outgoing records to keep API requests bounded.
-        if len(all_findings) >= 3000:
-            all_findings = all_findings[:3000]
-            break
-    completed = utc_now()
+def send_event(event: str, run: dict[str, Any], summary: dict[str, Any],
+               repo: dict[str, Any] | None = None,
+               findings: list[dict[str, Any]] | None = None) -> None:
+    """Send only sanitized scan metadata; obtain a fresh short-lived OIDC token per event."""
     payload = {
-        "run": {
-            "id": run_id,
-            "status": "completed",
-            "trigger_source": "github-actions",
-            "started_at": started,
-            "completed_at": completed,
-            "repositories_discovered": len(repositories),
-            "repositories_scanned": scanned,
-            "findings_total": len(all_findings),
-            "summary": {"status_counts": errors, "ecosystems": list(ECOSYSTEMS.keys())},
-        },
-        "repositories": [
-            {key: repo.get(key) for key in (
+        "event": event,
+        "run": run,
+        "summary": summary,
+        "repository": ({
+            key: repo.get(key) for key in (
                 "full_name", "html_url", "ecosystem", "description", "stars",
                 "default_branch", "status"
-            )}
-            for repo in repositories
-        ],
-        "findings": all_findings,
+            )
+        } if repo else None),
+        "findings": (findings or [])[:500],
     }
-    # GitHub issues a short-lived OIDC JWT scoped to this workflow. The Vercel API
-    # verifies issuer, audience, repository, branch, workflow path and event name.
     identity_token = github_oidc_token()
     response = requests.post(
         INGEST_URL,
@@ -288,10 +254,97 @@ def main() -> None:
             "x-vercel-protection-bypass": VERCEL_BYPASS,
         },
         json=payload,
-        timeout=90,
+        timeout=60,
     )
     if response.status_code != 200:
-        raise RuntimeError(f"Result ingestion failed with HTTP {response.status_code}; response body suppressed.")
+        raise RuntimeError(f"Progress ingestion failed with HTTP {response.status_code}; response body suppressed.")
+
+
+def main() -> None:
+    if not INGEST_URL.startswith("https://"):
+        raise RuntimeError("INGEST_URL must be an HTTPS endpoint.")
+    if not VERCEL_BYPASS:
+        raise RuntimeError("Add VERCEL_AUTOMATION_BYPASS_SECRET to GitHub Actions secrets.")
+
+    run_id = str(uuid.uuid4())
+    started = utc_now()
+    run = {
+        "id": run_id,
+        "status": "running",
+        "trigger_source": "github-actions",
+        "started_at": started,
+        "completed_at": None,
+        "repositories_discovered": 0,
+        "repositories_scanned": 0,
+        "findings_total": 0,
+    }
+    summary: dict[str, Any] = {
+        "phase": "discovering",
+        "message": "Searching public repositories by blockchain ecosystem.",
+        "progress_percent": 0,
+        "current_repository": None,
+        "status_counts": {},
+        "repositories": [],
+        "ecosystems": list(ECOSYSTEMS.keys()),
+    }
+    send_event("progress", run, summary)
+    print("Discovering public repositories by ecosystem metadata.")
+    repositories = discover()
+    run["repositories_discovered"] = len(repositories)
+    summary.update({
+        "phase": "scanning",
+        "message": f"Discovered {len(repositories)} repositories. Starting scans.",
+        "progress_percent": 0,
+        "repositories": [
+            {
+                "full_name": r["full_name"],
+                "html_url": r["html_url"],
+                "ecosystem": r["ecosystem"],
+                "status": "pending",
+            } for r in repositories
+        ],
+    })
+    send_event("progress", run, summary)
+
+    scanned = 0
+    all_findings: list[dict[str, Any]] = []
+    errors: dict[str, int] = {}
+    for index, repo in enumerate(repositories, start=1):
+        summary["phase"] = "scanning"
+        summary["current_repository"] = repo["full_name"]
+        summary["message"] = f"Scanning {repo['full_name']} ({index}/{len(repositories)})."
+        summary["progress_percent"] = round(((index - 1) / max(1, len(repositories))) * 100)
+        print(f"[{index}/{len(repositories)}] Scanning {repo['full_name']} ({repo['ecosystem']})")
+        try:
+            status, findings = scan_repository(repo)
+        except Exception:
+            status, findings = "worker_error", []
+        repo["status"] = status
+        scanned += int(status == "completed")
+        errors[status] = errors.get(status, 0) + 1
+        if len(all_findings) < 3000:
+            remaining = 3000 - len(all_findings)
+            all_findings.extend(findings[:remaining])
+        run["repositories_scanned"] = scanned
+        run["findings_total"] = len(all_findings)
+        summary["status_counts"] = errors
+        summary["progress_percent"] = round((index / max(1, len(repositories))) * 100)
+        summary["message"] = f"Finished {repo['full_name']}: {status}."
+        for entry in summary["repositories"]:
+            if entry["full_name"] == repo["full_name"]:
+                entry["status"] = status
+                entry["finding_count"] = len(findings)
+                break
+        # Persist each repository result immediately; findings contain metadata only.
+        send_event("progress", run, summary, repo, findings[:500])
+    completed = utc_now()
+    run["status"] = "completed"
+    run["completed_at"] = completed
+    summary["phase"] = "completed"
+    summary["current_repository"] = None
+    summary["progress_percent"] = 100
+    summary["message"] = f"Scan completed: {scanned}/{len(repositories)} repositories scanned."
+    send_event("complete", run, summary)
     print(f"Completed: {scanned}/{len(repositories)} repositories scanned; {len(all_findings)} sanitized findings ingested.")
 
 
