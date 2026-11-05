@@ -6,6 +6,8 @@ class WebScannerSafetyTests(unittest.TestCase):
         self.assertIsNone(safe_url("file:///etc/passwd"))
     def test_rejects_credentials_in_url(self):
         self.assertIsNone(safe_url("https://user:pass@example.com"))
+    def test_rejects_malformed_port(self):
+        self.assertIsNone(safe_url("https://example.com:not-a-port"))
     def test_secret_matches_are_redacted(self):
         findings = []
         inspect_text('const x = "ghp_' + ('A' * 40) + '";', "https://example.com/app.js", findings)
