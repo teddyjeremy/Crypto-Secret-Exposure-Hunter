@@ -13,6 +13,7 @@ export default async function Home(){
  const max=Math.max(1,...ecosystems.map((x:any)=>Number(x.count)));
  return <>
   <header className="topbar"><div><div className="eyebrow">SECURITY OPERATIONS / OVERVIEW</div><h1 className="page-title">Exposure intelligence</h1><div className="page-subtitle">Public blockchain repository monitoring and responsible disclosure.</div></div><div className="top-actions"><span className="pill">ALL CHAINS · PUBLIC REPOS</span><RunScanButton/></div></header>
+  <LiveScanProgress />
   {dbError&&<div className="notice"><strong>Database connection unavailable.</strong> Check DATABASE_URL in Vercel project settings and redeploy.</div>}
   <LiveScanProgress initialRun={data?.runs?.[0] || null}/>
   <section className="grid stats">
