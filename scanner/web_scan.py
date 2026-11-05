@@ -155,6 +155,8 @@ def scan_site(site: str) -> dict:
         candidate = safe_url(urljoin(final_url, html.unescape(raw)), host)
         if candidate and candidate not in assets:
             assets.append(candidate)
+    # Bound work even if a page includes hundreds of script tags.
+    assets = assets[:MAX_ASSETS]
     # Source maps are checked only when referenced by a public JS sourceMappingURL comment.
     for asset in list(assets[1:]):
         if len(assets) >= MAX_ASSETS:
