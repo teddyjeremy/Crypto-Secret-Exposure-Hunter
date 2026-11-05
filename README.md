@@ -37,7 +37,9 @@ Add these under **Settings → Secrets and variables → Actions → New reposit
 - `INGEST_TOKEN`: use the same value configured in Vercel. Ask the project administrator to rotate/set it if it is unavailable; do not commit it.
 - `INGEST_URL`: `https://crypto-secret-exposure-hunter.vercel.app/api/ingest`
 
-The scheduled worker uses the repository's automatic `GITHUB_TOKEN` for public repository discovery. No wallet credentials are needed.
+The scheduled worker uses the workflow-scoped `github.token` for public repository discovery. No wallet credentials are needed.
+
+**Important token setup:** Vercel's `INGEST_TOKEN` is stored as a sensitive, write-only environment variable. Generate a fresh value locally with `python -c "import secrets; print(secrets.token_urlsafe(48))"`, then overwrite `INGEST_TOKEN` with that value in Vercel Project Settings → Environment Variables and add the identical value as the GitHub Actions `INGEST_TOKEN` repository secret. Do not paste the token into issues, commits or chat. Set `INGEST_URL` to the endpoint above. The dashboard's Run scan button additionally requires `GITHUB_DISPATCH_TOKEN` in Vercel.
 
 ## Running scans
 
