@@ -62,7 +62,7 @@ MAX_REPOS = min(max(int(os.getenv("MAX_REPOS", "40")), 1), 80)
 PER_QUERY = int(os.getenv("PER_QUERY", "8"))
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 INGEST_URL = os.getenv("INGEST_URL", "").strip()
-INGEST_TOKEN = os.getenv("INGEST_TOKEN", "").strip()
+OIDC_AUDIENCE = "crypto-secret-exposure-hunter"
 VERCEL_BYPASS = os.getenv("VERCEL_AUTOMATION_BYPASS_SECRET", "").strip()
 
 
@@ -80,6 +80,19 @@ def headers() -> dict[str, str]:
         result["Authorization"] = f"Bearer {GITHUB_TOKEN}"
     return result
 
+
+def github_oidc_token() -> str:
+    request_url = os.getenv("ACTIONS_ID_TOKEN_REQUEST_URL", "")
+    request_token = os.getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "")
+    if not request_url or not request_token:
+        raise RuntimeError("GitHub Actions OIDC token is unavailable; check id-token: write permission.")
+    response = requests.get(request_url, headers={"Authorization": f"Bearer {request_token}"},
+                            params={"audience": OIDC_AUDIENCE}, timeout=20)
+    response.raise_for_status()
+    value = response.json().get("value")
+    if not isinstance(value, str) or not value:
+        raise RuntimeError("GitHub Actions did not issue an OIDC token.")
+    return value
 
 def discover() -> list[dict[str, Any]]:
     found: dict[str, dict[str, Any]] = {}
@@ -217,7 +230,7 @@ def scan_repository(repo: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
 
 
 def main() -> None:
-    if not INGEST_URL.startswith("https://") or not INGEST_TOKEN:
+    if not INGEST_URL.startswith("https://"):
         raise RuntimeError("INGEST_URL and INGEST_TOKEN GitHub Actions secrets are required.")
     run_id = str(uuid.uuid4())
     started = utc_now()
