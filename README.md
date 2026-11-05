@@ -20,7 +20,7 @@ Copy-Item .env.example .env.local
 npm run dev
 ```
 
-Set `DATABASE_URL` and `INGEST_TOKEN` in `.env.local`. The database schema is managed in Neon and is also documented in `database/schema.sql`.
+Set `DATABASE_URL` in `.env.local`. The database schema is managed in Neon and is also documented in `database/schema.sql`.
 
 ## Required configuration
 
@@ -30,17 +30,11 @@ Set `DATABASE_URL` and `INGEST_TOKEN` in `.env.local`. The database schema is ma
 - Scan ingestion uses GitHub Actions OIDC; no shared ingestion secret is required.
 - `GITHUB_DISPATCH_TOKEN`: optional fine-grained GitHub token with Actions: write and Metadata: read on this repository. Required for the dashboard's **Run scan** button.
 
-### GitHub Actions repository secrets
+### GitHub Actions authentication
 
-Add these under **Settings → Secrets and variables → Actions → New repository secret**:
+The worker authenticates to the ingestion API using GitHub Actions OIDC. The API verifies GitHub's signature, issuer, audience, repository, main branch, workflow path and event. No shared `INGEST_TOKEN` or `INGEST_URL` secret is needed.
 
-- `INGEST_TOKEN`: same value as the sensitive Vercel `INGEST_TOKEN`.
-- `VERCEL_AUTOMATION_BYPASS_SECRET`: create a Vercel Deployment Protection → Automation Bypass secret for the project and store the same value here. The Vercel app is SSO-protected; this header allows only the trusted Actions worker to reach the ingestion endpoint.
-- `INGEST_URL`: `https://crypto-secret-exposure-hunter.vercel.app/api/ingest`
-
-The scheduled worker uses the workflow-scoped `github.token` for public repository discovery. No wallet credentials are needed.
-
-**Important token setup:** Vercel's `INGEST_TOKEN` is stored as a sensitive, write-only environment variable. Generate a fresh value locally with `python -c "import secrets; print(secrets.token_urlsafe(48))"`, then overwrite `INGEST_TOKEN` with that value in Vercel Project Settings → Environment Variables and add the identical value as the GitHub Actions `INGEST_TOKEN` repository secret. Do not paste the token into issues, commits or chat. Set `INGEST_URL` to the endpoint above. The dashboard's Run scan button additionally requires `GITHUB_DISPATCH_TOKEN` in Vercel.
+The Vercel project has Deployment Protection enabled. Create a Vercel Automation Bypass secret and save it as the GitHub Actions repository secret `VERCEL_AUTOMATION_BYPASS_SECRET`; the workflow uses it only to reach the protected ingestion endpoint. The dashboard's **Run scan** button separately requires `GITHUB_DISPATCH_TOKEN` in Vercel (fine-grained GitHub token with Actions: write and Metadata: read). Without it, start a scan from the repository's Actions tab.
 
 ## Running scans
 
