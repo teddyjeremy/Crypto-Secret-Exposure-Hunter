@@ -25,6 +25,7 @@ jobs:
       GITHUB_TOKEN: ${{ github.token }}
       INGEST_URL: ${{ secrets.INGEST_URL }}
       INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       MAX_REPOS: ${{ inputs.max_repos || '30' }}
       PER_QUERY: "8"
       MAX_REPO_SIZE_KB: "150000"
