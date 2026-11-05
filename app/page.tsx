@@ -19,7 +19,7 @@ export default async function Home(){
    <div className="stat-card"><div className="stat-head">Repositories tracked <span className="stat-icon"><GitBranch size={15}/></span></div><div className="stat-value">{stats.repositories??"—"}</div><div className="stat-foot">Unique public repositories discovered</div></div>
    <div className="stat-card"><div className="stat-head">Open findings <span className="stat-icon"><AlertTriangle size={15}/></span></div><div className="stat-value">{stats.open_findings??"—"}</div><div className="stat-foot">Excluding false positives and remediated</div></div>
    <div className="stat-card"><div className="stat-head">Critical candidates <span className="stat-icon"><ShieldCheck size={15}/></span></div><div className="stat-value" style={{color:"var(--red)"}}>{stats.critical??"—"}</div><div className="stat-foot">Requires human review; not proof of compromise</div></div>
-   <div className="stat-card"><div className="stat-head">Completed scans <span className="stat-icon"><Activity size={15}/></span></div><div className="stat-value">{stats.completed_scans??"—"}</div><div className="stat-foot">Full-history scan jobs completed</div></div>
+   <div className="stat-card"><div className="stat-head">Completed scans <span className="stat-icon"><Activity size={15}/></span></div><div className="stat-value">{stats.completed_scans??"—"}</div><div className="stat-foot">Completed scan runs (default branch history)</div></div>
   </section>
   <section className="grid content-grid">
    <div>
