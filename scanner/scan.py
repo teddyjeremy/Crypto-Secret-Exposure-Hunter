@@ -322,9 +322,9 @@ def main() -> None:
         repo["status"] = status
         scanned += int(status == "completed")
         errors[status] = errors.get(status, 0) + 1
-        if len(all_findings) < 3000:
-            remaining = 3000 - len(all_findings)
-            all_findings.extend(findings[:remaining])
+        remaining = max(0, 3000 - len(all_findings))
+        findings_to_send = findings[:remaining]
+        all_findings.extend(findings_to_send)
         run["repositories_scanned"] = scanned
         run["findings_total"] = len(all_findings)
         summary["status_counts"] = errors
@@ -335,8 +335,12 @@ def main() -> None:
                 entry["status"] = status
                 entry["finding_count"] = len(findings)
                 break
-        # Persist each repository result immediately; findings contain metadata only.
-        send_event("progress", run, summary, repo, findings[:500])
+        # Persist each repository result immediately in bounded batches; findings contain metadata only.
+        if findings_to_send:
+            for offset in range(0, len(findings_to_send), 500):
+                send_event("progress", run, summary, repo, findings_to_send[offset:offset + 500])
+        else:
+            send_event("progress", run, summary, repo)
     completed = utc_now()
     run["status"] = "completed"
     run["completed_at"] = completed
