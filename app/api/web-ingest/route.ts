@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   const sitesScanned = integer(body?.sites_scanned) ?? 0;
   const findings = results.flatMap((site: any) => {
     const host = clean(site?.site, 253).toLowerCase();
-    if (!/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(host)) return [];
+    if (!/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(host)) return [];
     return (Array.isArray(site?.findings) ? site.findings.slice(0, 250) : []).flatMap((f: any) => {
       const fingerprint = clean(f?.fingerprint, 64);
       const assetUrl = clean(f?.asset_url, 1000);
