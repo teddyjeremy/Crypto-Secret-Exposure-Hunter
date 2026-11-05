@@ -1,0 +1,20 @@
+[extend]
+useDefault = true
+
+[[rules]]
+id = "solana-keypair-json"
+description = "Solana keypair byte array in credential-labelled context"
+regex = '''(?is)(?:secretKey|secret_key|keypair|privateKey)\s*["']?\s*[:=]\s*\[?\s*(?:\d{1,3}\s*,\s*){63}\d{1,3}\s*\]?'''
+keywords = ["secretKey", "secret_key", "keypair", "privateKey"]
+
+[[rules]]
+id = "mnemonic-seed-phrase"
+description = "Wallet mnemonic or seed phrase assignment"
+regex = '''(?i)(?:mnemonic|seed[_ -]?phrase)\s*[:=]\s*["'][a-z]{3,12}(?:\s+[a-z]{3,12}){11,23}["']'''
+keywords = ["mnemonic", "seed phrase", "seed_phrase"]
+
+[[rules]]
+id = "private-key-context-hex"
+description = "Hex private key in explicitly credential-labelled context"
+regex = '''(?i)(?:private[_ -]?key|secret[_ -]?key)\s*[:=]\s*["']?(?:0x)?[a-f0-9]{64}'''
+keywords = ["private_key", "private key", "secret_key"]
