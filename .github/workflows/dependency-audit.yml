@@ -1,0 +1,46 @@
+name: Dependency security audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/dependency-audit.yml"
+  schedule:
+    - cron: "31 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+
+      - name: Install dependency graph
+        run: npm install --ignore-scripts --no-audit
+
+      - name: Audit installed dependency graph
+        run: |
+          npm audit --json > "$RUNNER_TEMP/npm-audit.json" || true
+          python - <<'PY'
+          import json, pathlib, sys
+          report = json.loads(pathlib.Path("$RUNNER_TEMP/npm-audit.json").read_text())
+          counts = report.get("metadata", {}).get("vulnerabilities", {})
+          print("Dependency audit summary:", counts)
+          for name, item in report.get("vulnerabilities", {}).items():
+              print(f"{item.get('severity','unknown').upper():8} {name} | range={item.get('range','?')} | fix={item.get('fixAvailable',False)}")
+          if counts.get("critical", 0) or counts.get("high", 0):
+              sys.exit("High or critical dependency advisories found.")
+          PY
