@@ -31,6 +31,14 @@ export async function POST(request:NextRequest){
  const length=Number(request.headers.get("content-length")||0);
  if(length>2_000_000)return NextResponse.json({error:"Payload too large"},{status:413});
  let body:any;try{body=await request.json();}catch{return NextResponse.json({error:"Invalid JSON"},{status:400});}
+ if(body?.event==="registry"){
+  const names=Array.isArray(body.repository_names)?body.repository_names.slice(0,100).map((v:unknown)=>clean(v,200)).filter((v:string)=>/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(v)):[];
+  try{
+   const sql=getDb();
+   const rows=names.length?await sql\`SELECT full_name,last_pushed_at,latest_status,last_scanned_commit FROM repositories WHERE full_name = ANY(\${names}::text[])\`:[];
+   return NextResponse.json({ok:true,repositories:rows},{headers:{"Cache-Control":"no-store"}});
+  }catch{return NextResponse.json({error:"Repository registry unavailable."},{status:503});}
+ }
  const run=body?.run;const repositories=Array.isArray(body?.repositories)?body.repositories.slice(0,100):[];const findings=Array.isArray(body?.findings)?body.findings.slice(0,3000):[];
  if(body?.event==="progress"||body?.event==="complete"){
   if(!run||!/^[-a-zA-Z0-9_]{6,100}$/.test(clean(run.id,100)))return NextResponse.json({error:"Invalid scan run metadata"},{status:400});
