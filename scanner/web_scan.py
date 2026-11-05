@@ -66,14 +66,19 @@ def public_host(host: str) -> bool:
         return False
 
 def safe_url(url: str, base_host: str | None = None) -> str | None:
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+    try:
+        parsed = urlparse(url)
+        port = parsed.port
+        host_value = parsed.hostname
+    except ValueError:
+        return None
+    if parsed.scheme not in ("http", "https") or not host_value:
         return None
     if parsed.username or parsed.password:
         return None
-    if parsed.port not in (None, 80, 443):
+    if port not in (None, 80, 443):
         return None
-    host = parsed.hostname.lower().rstrip(".")
+    host = host_value.lower().rstrip(".")
     if base_host and host != base_host and not host.endswith("." + base_host):
         # Keep crawling within the registered site; do not follow arbitrary third-party URLs.
         return None
