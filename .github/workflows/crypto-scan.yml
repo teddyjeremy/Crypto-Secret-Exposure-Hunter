@@ -30,6 +30,7 @@ jobs:
       PER_QUERY: "8"
       MAX_REPO_SIZE_KB: "150000"
       REPO_TIMEOUT_SECONDS: "240"
+      PYTHONUNBUFFERED: "1"
     steps:
       - name: Checkout scanner
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -67,5 +68,5 @@ jobs:
       - name: Run scanner safety tests
         run: python -m unittest scanner.test_scan scanner.tests.test_classifier
 
-      - name: Run public repository scan
-        run: python scanner/scan.py
+      - name: Run public repository scan with live progress
+        run: python scanner/progress_scan.py
