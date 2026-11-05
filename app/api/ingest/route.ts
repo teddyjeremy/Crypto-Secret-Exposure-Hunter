@@ -2,7 +2,7 @@ import { NextRequest,NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 export const runtime="nodejs";
 const clean=(v:unknown,max=500)=>typeof v==="string"?v.slice(0,max):"";
-const integer=(v:unknown)=>Number.isInteger(v)&&Number(v)>=0?Number(v):null;
+const integer=(v:unknown)=>typeof v==="number"&&Number.isInteger(v)&&v>=0?v:null;
 export async function POST(request:NextRequest){
  const expected=process.env.INGEST_TOKEN;
  if(!expected||request.headers.get("authorization")!==`Bearer ${expected}`)return NextResponse.json({error:"Unauthorized"},{status:401});
