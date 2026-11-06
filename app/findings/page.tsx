@@ -11,6 +11,15 @@ function fileUrl(f:any) {
  return `https://github.com/${f.repository_full_name}/blob/${ref}/${filePath}${f.line_number?`#L${f.line_number}`:""}`;
 }
 
+const EXCHANGE_TYPES = new Set(["exchange_api_key","exchange_api_secret","exchange_api_passphrase"]);
+const MNEMONIC_TYPES = new Set(["mnemonic_or_seed_phrase"]);
+function categoryOf(f:any):"exchange"|"mnemonic"|"wallet" {
+ if (EXCHANGE_TYPES.has(String(f.secret_type||""))) return "exchange";
+ if (MNEMONIC_TYPES.has(String(f.secret_type||""))) return "mnemonic";
+ return "wallet";
+}
+const CATEGORY_LABELS = {exchange:"Exchange API credentials",wallet:"Wallet private keys",mnemonic:"Mnemonics / seed phrases"};
+
 function FindingsTable({rows}:{rows:any[]}) {
  return <div className="table-wrap"><table><thead><tr><th>Classification</th><th>Confidence</th><th>Exposed file / line</th><th>Chain</th><th>Secret type / rule</th><th>Commit</th><th>Status</th><th>Disclosure</th></tr></thead><tbody>{rows.map(f=>{
  const url=fileUrl(f);
@@ -19,25 +28,34 @@ function FindingsTable({rows}:{rows:any[]}) {
  })}</tbody></table></div>;
 }
 
-export default async function FindingsPage({searchParams}:{searchParams:Promise<{chain?:string}>}){
+export default async function FindingsPage({searchParams}:{searchParams:Promise<{chain?:string;category?:string}>}){
  let rows:any[]=[];let failed=false;try{rows=await getFindings();}catch{failed=true;}
  const params=await searchParams;
  const selectedChain=String(params?.chain||"").trim().toLowerCase();
+ const selectedCategory=["exchange","wallet","mnemonic"].includes(String(params?.category||""))?String(params.category) as "exchange"|"wallet"|"mnemonic":"";
  const chains=Array.from(new Set(rows.map(f=>String(f.ecosystem||"unknown").toLowerCase()))).sort();
- const filteredRows=selectedChain?rows.filter(f=>String(f.ecosystem||"unknown").toLowerCase()===selectedChain):rows;
+ const categoryRows=selectedCategory?rows.filter(f=>categoryOf(f)===selectedCategory):rows;
+ const filteredRows=selectedChain?categoryRows.filter(f=>String(f.ecosystem||"unknown").toLowerCase()===selectedChain):categoryRows;
  const groups=new Map<string,any[]>();
  for(const finding of filteredRows){const repo=String(finding.repository_full_name||"Unknown repository");if(!groups.has(repo))groups.set(repo,[]);groups.get(repo)!.push(finding);}
  const repositories=Array.from(groups.entries()).sort((a,b)=>a[0].localeCompare(b[0]));
  const displayChain=chains.find(c=>c===selectedChain);
- return <><header className="topbar"><div><div className="eyebrow">INTELLIGENCE / TRIAGE</div><h1 className="page-title">{displayChain?`${displayChain.toUpperCase()} findings`:"Findings by repository"}</h1><div className="page-subtitle">Only repositories with open secret-candidate findings are shown. Clean scans and discovery-only repositories are hidden.</div></div><span className="pill">{filteredRows.length} RECORDS · {repositories.length} REPOS</span></header>
+ const categoryCounts={exchange:rows.filter(f=>categoryOf(f)==="exchange").length,wallet:rows.filter(f=>categoryOf(f)==="wallet").length,mnemonic:rows.filter(f=>categoryOf(f)==="mnemonic").length};
+ const title=selectedCategory?CATEGORY_LABELS[selectedCategory]:displayChain?`${displayChain.toUpperCase()} findings`:"Findings by credential category";
+ return <><header className="topbar"><div><div className="eyebrow">INTELLIGENCE / TRIAGE</div><h1 className="page-title">{title}</h1><div className="page-subtitle">Only repositories with open secret-candidate findings are shown. Clean scans and discovery-only repositories are hidden.</div></div><span className="pill">{filteredRows.length} RECORDS · {repositories.length} REPOS</span></header>
  {failed&&<div className="notice">Database unavailable. Verify DATABASE_URL and redeploy.</div>}
  <div className="notice"><strong>Review before disclosure.</strong> Severity is heuristic. A detected pattern does not prove that a credential is valid, active, funded or exploitable. Exchange API permissions are always marked unknown unless the owner independently confirms them. Never authenticate with discovered credentials or test withdrawals.</div>
+ <div className="panel"><div className="panel-head"><div className="panel-title">Credential category</div><span className="panel-kicker">SEPARATE FINDING TYPES</span></div>
+ <div style={{display:"flex",gap:8,flexWrap:"wrap",padding:"12px 14px"}}>
+ <a className={`btn ${!selectedCategory?"":"secondary"}`} href="/findings">All credentials ({rows.length})</a>
+ {(["exchange","wallet","mnemonic"] as const).map(category=><a key={category} className={`btn ${selectedCategory===category?"":"secondary"}`} href={`/findings?category=${category}`}>{CATEGORY_LABELS[category]} ({categoryCounts[category]})</a>)}
+ </div></div>
  <div className="panel"><div className="panel-head"><div className="panel-title">Filter by chain</div><span className="panel-kicker">{chains.length} ECOSYSTEMS</span></div>
  <div style={{display:"flex",gap:8,flexWrap:"wrap",padding:"12px 14px"}}>
- <a className={`btn ${!selectedChain?"":"secondary"}`} href="/findings">All chains ({rows.length})</a>
- {chains.map(chain=><a key={chain} className={`btn ${selectedChain===chain?"":"secondary"}`} href={`/findings?chain=${encodeURIComponent(chain)}`}>{chain.toUpperCase()} ({rows.filter(f=>String(f.ecosystem||"unknown").toLowerCase()===chain).length})</a>)}
+ <a className={`btn ${!selectedChain?"":"secondary"}`} href={selectedCategory?`/findings?category=${selectedCategory}`:"/findings"}>All chains ({categoryRows.length})</a>
+ {chains.map(chain=><a key={chain} className={`btn ${selectedChain===chain?"":"secondary"}`} href={`/findings?chain=${encodeURIComponent(chain)}${selectedCategory?`&category=${selectedCategory}`:""}`}>{chain.toUpperCase()} ({categoryRows.filter(f=>String(f.ecosystem||"unknown").toLowerCase()===chain).length})</a>)}
  </div></div>
- <div className="panel"><div className="panel-head"><div className="panel-title">{displayChain?`${displayChain.toUpperCase()} repository groups`:"Repository groups"}</div><span className="panel-kicker">UP TO 100 LATEST FINDINGS PER REPOSITORY · FILE PATHS AND LINES</span></div>
+ <div className="panel"><div className="panel-head"><div className="panel-title">{selectedCategory?CATEGORY_LABELS[selectedCategory]:displayChain?`${displayChain.toUpperCase()} repository groups`:"Findings grouped by repository"}</div><span className="panel-kicker">UP TO 100 LATEST FINDINGS PER REPOSITORY · FILE PATHS AND LINES</span></div>
  {repositories.length?<div style={{display:"grid",gap:10,padding:14}}>{repositories.map(([repo,findings],index)=>{
  const candidates=findings.filter(f=>f.classification==="secret_candidate").length;
  return <details key={repo} open={index===0} style={{border:"1px solid var(--border)",borderRadius:10,background:"rgba(255,255,255,.015)",overflow:"hidden"}}>
@@ -47,6 +65,6 @@ export default async function FindingsPage({searchParams}:{searchParams:Promise<
  </summary>
  <div style={{borderTop:"1px solid var(--border)"}}><FindingsTable rows={findings}/></div>
  </details>;
- })}</div>:<div className="empty"><div className="empty-icon"><Search size={19}/></div><strong style={{color:"#b8c8d5"}}>{selectedChain?"No findings for this chain":"Nothing to triage"}</strong><div style={{marginTop:6}}>{selectedChain?"Try another chain or select All chains.":"The first completed worker scan will populate these repository groups."}</div></div>}</div>
+ })}</div>:<div className="empty"><div className="empty-icon"><Search size={19}/></div><strong style={{color:"#b8c8d5"}}>{selectedCategory?"No findings in this credential category":selectedChain?"No findings for this chain":"Nothing to triage"}</strong><div style={{marginTop:6}}>{selectedCategory?"Choose another credential category or select All credentials.":selectedChain?"Try another chain or select All chains.":"The first completed worker scan will populate these groups."}</div></div>}</div>
  </>;
 }
