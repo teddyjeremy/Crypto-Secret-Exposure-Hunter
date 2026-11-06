@@ -40,7 +40,7 @@ export async function POST(request:NextRequest){
   }catch{return NextResponse.json({error:"Repository registry unavailable."},{status:503});}
  }
  const run=body?.run;const repositories=Array.isArray(body?.repositories)?body.repositories.slice(0,100):[];const findings=Array.isArray(body?.findings)?body.findings.slice(0,3000):[];
- if(body?.event==="progress"||body?.event==="complete"){
+ if(body?.event==="progress"||body?.event==="complete"||body?.event==="repository_complete"){
   if(!run||!/^[-a-zA-Z0-9_]{6,100}$/.test(clean(run.id,100)))return NextResponse.json({error:"Invalid scan run metadata"},{status:400});
   const summary=body?.summary&&typeof body.summary==="object"?body.summary:{};
   const eventRepo=body?.repository&&typeof body.repository==="object"?body.repository:null;
@@ -70,6 +70,12 @@ export async function POST(request:NextRequest){
      VALUES(${fingerprint},${fullName},${clean(f.ecosystem,80)||"Other Web3"},${severity},${classification},${clean(f.secret_type,120)||null},${confidence},${clean(f.rule_id,120)||"unknown"},${clean(f.description,240)||null},${clean(f.file_path,700)||"(path unavailable)"},${integer(f.line_number)},${clean(f.commit_sha,80)||null},COALESCE(${f.date||null}::timestamptz,NOW()),NOW())
      ON CONFLICT(fingerprint) DO UPDATE SET last_seen_at=NOW(),classification=EXCLUDED.classification,secret_type=EXCLUDED.secret_type,confidence=EXCLUDED.confidence,description=EXCLUDED.description,file_path=EXCLUDED.file_path,line_number=EXCLUDED.line_number,commit_sha=EXCLUDED.commit_sha`;
     upserted++;
+   }
+   if(body.event==="repository_complete"&&eventRepo){
+    const fullName=clean(eventRepo.full_name,200);
+    if(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(fullName)){
+     await sql`UPDATE findings SET status='not_observed' WHERE repository_full_name=${fullName} AND last_seen_at < ${run.started_at}::timestamptz AND status NOT IN ('false_positive','remediated')`;
+    }
    }
    return NextResponse.json({ok:true,run_id:run.id,status,repositories_discovered:integer(run.repositories_discovered)||0,repositories_scanned:integer(run.repositories_scanned)||0,findings_upserted:upserted});
   }catch(error){console.error("progress ingestion failed",error instanceof Error?error.message:"unknown");return NextResponse.json({error:"Could not persist sanitized scan progress."},{status:500});}
