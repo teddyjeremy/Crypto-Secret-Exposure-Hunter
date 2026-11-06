@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
         VALUES(${f.fingerprint},${f.host},${f.assetUrl},${f.rule},${f.severity},${f.confidence},${f.line},
         'redacted; source value intentionally not retained',NOW())
         ON CONFLICT(fingerprint) DO UPDATE SET last_seen_at=NOW(),severity=EXCLUDED.severity,
-        confidence=EXCLUDED.confidence,line_number=EXCLUDED.line_number,asset_url=EXCLUDED.asset_url,status=CASE WHEN website_findings.status='not_observed' THEN 'new' ELSE website_findings.status END`;
+        confidence=EXCLUDED.confidence,line_number=EXCLUDED.line_number,asset_url=EXCLUDED.asset_url,status=CASE WHEN website_findings.status IN ('not_observed','remediated') THEN 'new' ELSE website_findings.status END`;
     }
     return NextResponse.json({ ok: true, run_id: runId, sites_discovered: sitesDiscovered,
       sites_scanned: sitesScanned, findings_received: findings.length });
