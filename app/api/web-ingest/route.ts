@@ -26,11 +26,11 @@ async function authorized(request: NextRequest) {
 export async function POST(request: NextRequest) {
   if (!await authorized(request)) return NextResponse.json({ error: "Unauthorized workflow identity" }, { status: 401 });
   const length = Number(request.headers.get("content-length") || 0);
-  if (length > 1_000_000) return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+  if (length > 4_000_000) return NextResponse.json({ error: "Payload too large" }, { status: 413 });
   let body: any;
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
   if (!/^[a-f0-9-]{36}$/i.test(clean(body?.run_id, 36))) return NextResponse.json({ error: "Invalid run ID" }, { status: 400 });
-  const results = Array.isArray(body?.results) ? body.results.slice(0, 30) : [];
+  const results = Array.isArray(body?.results) ? body.results.slice(0, 1000) : [];
   const sitesDiscovered = integer(body?.sites_discovered) ?? 0;
   const sitesScanned = integer(body?.sites_scanned) ?? 0;
   const findings = results.flatMap((site: any) => {
