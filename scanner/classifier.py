@@ -44,6 +44,15 @@ def classify_text(value: str, context: str = "") -> Classification:
 def classify_gitleaks_rule(rule_id: str, description: str = "") -> Classification:
     """Map scanner rule metadata to a safe class without accessing the match."""
     key = (rule_id + " " + description).lower().replace("-", "_").replace(" ", "_")
+    if "exchange_api_key" in key:
+        return Classification("secret_candidate", "exchange_api_key", "high",
+            "Rule indicates an exchange-specific API key assignment; permissions are unknown.")
+    if "exchange_api_secret" in key:
+        return Classification("secret_candidate", "exchange_api_secret", "high",
+            "Rule indicates an exchange-specific API secret assignment; permissions are unknown.")
+    if "exchange_api_passphrase" in key:
+        return Classification("secret_candidate", "exchange_api_passphrase", "high",
+            "Rule indicates an exchange-specific API passphrase assignment; permissions are unknown.")
     if any(x in key for x in ("mnemonic", "bip39", "seed_phrase", "seedphrase")):
         return Classification("secret_candidate", "mnemonic_or_seed_phrase", "high",
             "Rule indicates a mnemonic-like value.")
