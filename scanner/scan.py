@@ -150,8 +150,9 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
         response = requests.get(
             f"{API}/search/repositories",
             params={
-                # Bot discovery intentionally includes archived repositories.
-                "q": f"{query} fork:false forks:<10" + ("" if ecosystem == "Crypto Trading Bots" else " archived:false"),
+                # Include archived projects too: old public repositories can still
+                # contain exposed credentials. Exclude forks to reduce duplicate noise.
+                "q": f"{query} fork:false",
                 "sort": "updated",
                 "order": "desc",
                 "per_page": min(per_ecosystem, 10),
