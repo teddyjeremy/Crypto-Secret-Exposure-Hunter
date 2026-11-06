@@ -78,7 +78,7 @@ export default async function WebsitesPage() {
               <td className="p-3"><span className="font-medium">{f.rule_id}</span><div className="mt-1 text-xs text-muted-foreground">Potential exposed item</div></td>
               <td className="p-3">{f.severity}</td>
               <td className="p-3">{f.confidence}</td>
-              <td className="p-3 font-mono">{f.line_number != null ? `Line ${f.line_number}` : "Not available"}</td>
+              <td className="p-3 font-mono">{f.line_number != null ? <a className="text-cyan-400 underline underline-offset-2" href={`/websites/source-viewer?asset=${encodeURIComponent(f.asset_url)}&line=${f.line_number}`}>Line {f.line_number} <ExternalLink size={11} className="ml-1 inline" /></a> : "Not available"}</td>
               <td className="max-w-sm p-3">
                 {assetUrl ? <a className="break-all text-cyan-400 underline underline-offset-2" href={assetUrl} target="_blank" rel="noopener noreferrer" title={f.asset_url}>
                   <FileCode2 size={13} className="mr-1 inline"/>{assetLabel(f.asset_url)} <ExternalLink size={11} className="ml-1 inline"/>
