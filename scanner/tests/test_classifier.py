@@ -32,6 +32,14 @@ class ClassificationTests(unittest.TestCase):
         result = classify_gitleaks_rule("polkadot-private-key")
         self.assertEqual(result.secret_type, "substrate_signing_key")
 
+    def test_sui_signing_key_uses_ingest_allowlist_type(self):
+        result = classify_gitleaks_rule("sui-private-key")
+        self.assertEqual(result.secret_type, "sui_signing_key")
+
+    def test_aptos_signing_key_uses_ingest_allowlist_type(self):
+        result = classify_gitleaks_rule("aptos-private-key")
+        self.assertEqual(result.secret_type, "aptos_signing_key")
+
     def test_public_identifier_is_not_promoted_to_secret(self):
         result = classify_text("not-a-key")
         self.assertEqual(result.category, "uncertain")

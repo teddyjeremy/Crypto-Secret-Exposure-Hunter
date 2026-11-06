@@ -57,7 +57,7 @@ id = "exchange-api-key"
 description = "Exchange API key candidate; permissions unknown"
 regex = '''(?i)(?:OKX|BINANCE|COINBASE|KRAKEN|BYBIT|KUCOIN|GATEIO|GATE\.IO|BITGET|MEXC|HTX|HUOBI|CRYPTO\.COM|GEMINI|BITFINEX|DERIBIT|BITSTAMP|BINGX|COINEX)[A-Z0-9_ .-]{0,40}(?:API[_ -]?(?:KEY|KEY_ID)|ACCESS[_ -]?KEY|APIKEY)\s*["']?\s*[:=]\s*["']?([A-Za-z0-9_./+=-]{12,160})'''
 secretGroup = 1
-keywords = ["OKX", "BINANCE", "COINBASE", "KRAKEN", "BYBIT", "KUCOIN", "GATEIO", "BITGET"]
+keywords = ["OKX", "BINANCE", "COINBASE", "KRAKEN", "BYBIT", "KUCOIN", "GATEIO", "GATE.IO", "BITGET", "MEXC", "HTX", "HUOBI", "CRYPTO.COM", "GEMINI", "BITFINEX", "DERIBIT", "BITSTAMP", "BINGX", "COINEX"]
 
 [[rules]]
 id = "exchange-api-secret"

@@ -68,9 +68,12 @@ def classify_gitleaks_rule(rule_id: str, description: str = "") -> Classificatio
     if any(x in key for x in ("ton_wallet", "ton_private", "ton_secret")):
         return Classification("secret_candidate", "ton_wallet_secret", "high",
             "Rule indicates TON wallet signing material.")
-    if any(x in key for x in ("sui", "aptos")) and any(x in key for x in ("private", "secret", "keypair")):
-        return Classification("secret_candidate", "move_chain_signing_key", "high",
-            "Rule indicates Sui or Aptos signing material.")
+    if "sui" in key and any(x in key for x in ("private", "secret", "keypair")):
+        return Classification("secret_candidate", "sui_signing_key", "high",
+            "Rule indicates Sui signing material.")
+    if "aptos" in key and any(x in key for x in ("private", "secret", "keypair")):
+        return Classification("secret_candidate", "aptos_signing_key", "high",
+            "Rule indicates Aptos signing material.")
     if any(x in key for x in ("cosmos", "injective")) and any(x in key for x in ("private", "secret", "mnemonic", "key")):
         return Classification("secret_candidate", "cosmos_ecosystem_signing_key", "high",
             "Rule indicates Cosmos ecosystem signing material.")
