@@ -42,7 +42,7 @@ export default async function WebsitesPage() {
     <div className="space-y-2">
       <p className="text-sm font-medium text-cyan-400">PASSIVE WEB SCANNER</p>
       <h1 className="text-3xl font-semibold tracking-tight">Website exposure findings</h1>
-      <p className="max-w-3xl text-sm text-muted-foreground">Each finding links to the affected website and the exact public asset inspected. The reported line is the scanner's detected line in that asset. Findings are heuristic candidates, not proof that a credential is valid or usable. Exchange API permissions are unknown; secret values are never stored.</p>
+      <p className="max-w-3xl text-sm text-muted-foreground">Each finding links to the affected website and the exact public asset inspected. The reported line is the scanner&apos;s detected line in that asset. Findings are heuristic candidates, not proof that a credential is valid or usable. Exchange API permissions are unknown; secret values are never stored.</p>
     </div>
     {error && <p className="rounded-lg border p-4 text-sm">{error}</p>}
     <section className="grid gap-4 sm:grid-cols-3">

@@ -12,6 +12,7 @@ function WebsiteSourceViewerContent() {
   const [lineCount, setLineCount] = useState(0);
   const [sourceLines, setSourceLines] = useState<string[]>([]);
   const [message, setMessage] = useState("");
+  const [loadedAsset, setLoadedAsset] = useState("");
 
   const safeAsset = useMemo(() => {
     try {
@@ -28,11 +29,7 @@ function WebsiteSourceViewerContent() {
   }, [asset]);
 
   useEffect(() => {
-    if (!safeAsset) {
-      setStatus("error");
-      setMessage("This asset URL is not allowed.");
-      return;
-    }
+    if (!safeAsset) return;
     let active = true;
     fetch(safeAsset, { method: "GET", mode: "cors", credentials: "omit" })
       .then(async (response) => {
@@ -43,14 +40,19 @@ function WebsiteSourceViewerContent() {
         setLineCount(lines.length);
         setSourceLines(lines);
         setStatus("ready");
+        setLoadedAsset(safeAsset);
       })
       .catch(() => {
         if (!active) return;
         setStatus("error");
         setMessage("This website does not allow browser access to its source (CORS), or the asset is no longer available. Open the asset directly and use the displayed line number with your editor's Go to Line command.");
+        setLoadedAsset(safeAsset);
       });
     return () => { active = false; };
   }, [safeAsset]);
+
+  const viewStatus = !safeAsset ? "error" : loadedAsset === safeAsset ? status : "loading";
+  const viewMessage = !safeAsset ? "This asset URL is not allowed." : message;
 
   return <main className="mx-auto w-full max-w-4xl space-y-6 px-5 py-10">
     <div className="space-y-2">
@@ -66,11 +68,11 @@ function WebsiteSourceViewerContent() {
       <div className="mt-4 flex items-center gap-2 text-sm">
         <FileCode2 size={16} />
         <span className="font-mono">Line {line}</span>
-        {status === "loading" && <><Loader2 size={14} className="animate-spin" /> Counting lines…</>}
-        {status === "ready" && <span className="text-muted-foreground">of {lineCount.toLocaleString()} lines</span>}
+        {viewStatus === "loading" && <><Loader2 size={14} className="animate-spin" /> Counting lines…</>}
+        {viewStatus === "ready" && <span className="text-muted-foreground">of {lineCount.toLocaleString()} lines</span>}
       </div>
     </div>
-    {status === "ready" && <div className="overflow-hidden rounded-xl border">
+    {viewStatus === "ready" && <div className="overflow-hidden rounded-xl border">
       <div className="border-b bg-muted/40 px-4 py-2 text-xs text-muted-foreground">DETECTED LINE AND NEARBY CONTEXT · SHOWING UP TO 5 LINES EACH SIDE</div>
       <div className="max-h-[65vh] overflow-auto py-2 font-mono text-xs sm:text-sm">
         {Array.from({ length: Math.max(0, Math.min(lineCount, line + 5) - Math.max(1, line - 5) + 1) }, (_, i) => Math.max(1, line - 5) + i)
@@ -92,7 +94,7 @@ function WebsiteSourceViewerContent() {
       </div>
       <div className="border-t px-4 py-3 text-xs text-muted-foreground">Showing only nearby lines, not the entire file. The detected line and lines that look sensitive are redacted; other nearby source lines are shown for context. No source text is saved to the database.</div>
     </div>}
-    {status === "error" && <div className="rounded-xl border p-4 text-sm"><p>{message}</p></div>}
+    {viewStatus === "error" && <div className="rounded-xl border p-4 text-sm"><p>{viewMessage}</p></div>}
     <div className="flex items-start gap-2 rounded-xl border p-4 text-sm text-muted-foreground"><ShieldCheck size={17} className="mt-0.5 shrink-0" /><p>To inspect the actual source safely, use the line number in a local text editor. Do not copy, test, or use any credential you encounter.</p></div>
   </main>;
 }

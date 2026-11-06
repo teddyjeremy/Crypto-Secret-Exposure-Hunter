@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, FileSearch, LayoutDashboard, Mail, Settings, ShieldCheck, Radar, Globe } from "lucide-react";
+import { Activity, FileSearch, LayoutDashboard, Mail, Settings, Radar, Globe } from "lucide-react";
 const links = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
   { href: "/findings", label: "Findings", icon: FileSearch },

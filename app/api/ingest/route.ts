@@ -45,7 +45,6 @@ export async function POST(request:NextRequest){
   if(!run||!/^[-a-zA-Z0-9_]{6,100}$/.test(clean(run.id,100)))return NextResponse.json({error:"Invalid scan run metadata"},{status:400});
   const summary=body?.summary&&typeof body.summary==="object"?body.summary:{};
   const eventRepo=body?.repository&&typeof body.repository==="object"?body.repository:null;
-  const safeRepos=Array.isArray(summary.repositories)?summary.repositories.slice(0,100):[];
   const status=body.event==="complete"?"completed":"running";
   try{
    const sql=getDb();

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, AlertTriangle, Database, GitBranch, ShieldCheck, ArrowUpRight, Clock3 } from "lucide-react";
+import { Activity, AlertTriangle, Database, GitBranch, ShieldCheck, ArrowUpRight } from "lucide-react";
 import { getDashboardData } from "@/lib/db";
 import { RunScanButton } from "@/components/run-scan-button";
 import { LiveScanProgress } from "@/components/live-scan-progress";
@@ -43,7 +43,7 @@ export default async function Home(){
     </div>
     <div className="panel"><div className="panel-head"><div className="panel-title">Safety controls</div><ShieldCheck size={16} color="var(--green)"/></div>
      <div style={{display:"grid",gap:13}}>
-      {["No private-key values stored","No wallet imports or authentication","No address derivation or balance checks","No signing or fund transfers","Private disclosure drafts only"].map((x,i)=><div key={x} style={{display:"flex",gap:9,alignItems:"center",fontSize:11,color:"#a9b8c5"}}><span style={{color:"var(--green)"}}>✓</span>{x}</div>)}
+      {["No private-key values stored","No wallet imports or authentication","No address derivation or balance checks","No signing or fund transfers","Private disclosure drafts only"].map((x)=><div key={x} style={{display:"flex",gap:9,alignItems:"center",fontSize:11,color:"#a9b8c5"}}><span style={{color:"var(--green)"}}>✓</span>{x}</div>)}
      </div>
     </div>
     <div className="panel"><div className="panel-head"><div className="panel-title">Scheduled scanning</div><span className="badge new">FREE WORKFLOW</span></div><div style={{fontSize:11,color:"var(--muted)",lineHeight:1.7}}>GitHub Actions checks for new or changed public repositories every 30 minutes. Previously scanned repositories with no new pushes are skipped. Results stream into Neon as each repository finishes.</div><Link href="/settings" className="btn secondary" style={{marginTop:13}}>View setup <ArrowUpRight size={13}/></Link></div>
