@@ -234,17 +234,37 @@ def discover_sites() -> list[str]:
             items = response.json().get("items", [])
             added = 0
             for repo in items:
-                homepage = (repo.get("homepage") or "").strip()
-                if homepage:
-                    parsed = urlparse(homepage if "://" in homepage else "https://" + homepage)
+                candidates = [(repo.get("homepage") or "").strip()]
+                # README links often contain the live app/docs URL even when the
+                # repository homepage field is empty. Fetch only public README text.
+                full_name = repo.get("full_name") or ""
+                if full_name.count("/") == 1:
+                    try:
+                        readme = requests.get(
+                            f"https://api.github.com/repos/{full_name}/readme",
+                            headers={**headers, "Accept": "application/vnd.github.raw+json"},
+                            timeout=12,
+                        )
+                        if readme.status_code == 200:
+                            body = readme.text[:300000]
+                            candidates.extend(re.findall(r"https?://[^\\s\\])>\\\"']+", body)[:12])
+                    except requests.RequestException:
+                        pass
+                for candidate in candidates:
+                    if not candidate:
+                        continue
+                    parsed = urlparse(candidate if "://" in candidate else "https://" + candidate)
                     host = (parsed.hostname or "").lower().rstrip(".")
                     if host and "." in host and public_host(host):
+                        # Ignore GitHub itself and common source-hosting mirrors.
+                        if host in {"github.com", "www.github.com", "raw.githubusercontent.com"}:
+                            continue
                         domains.add("https://" + host)
                         added += 1
             print(f"Discovery {index}/{len(queries)}: {query}; {added} candidate domains.")
         except requests.RequestException as exc:
             print(f"Discovery search failed ({query}): {type(exc).__name__}")
-        time.sleep(1.5)
+        time.sleep(2.0 if GITHUB_TOKEN else 10.0)
     return sorted(domains)
 
 def main():
