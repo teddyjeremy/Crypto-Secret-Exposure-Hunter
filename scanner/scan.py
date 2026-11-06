@@ -239,10 +239,19 @@ def sanitize_report(raw: Any, repo: dict[str, Any]) -> list[dict[str, Any]]:
     safe: list[dict[str, Any]] = []
     if not isinstance(raw, list):
         return safe
+    # Only report wallet-signing material. Exchange API permissions cannot be
+    # established safely from a leaked API key/secret, so those are excluded.
+    allowed_rules = {
+        "solana-keypair-json", "mnemonic-seed-phrase", "private-key-context-hex",
+        "solana-base58-private-key", "evm-private-key", "bitcoin-wif-private-key",
+        "extended-wallet-private-key",
+    }
     for item in raw:
         if not isinstance(item, dict):
             continue
         rule = str(item.get("RuleID") or "unknown")[:120]
+        if rule not in allowed_rules:
+            continue
         description = str(item.get("Description") or "")[:240]
         path = str(item.get("File") or "(path unavailable)")[:700]
         commit = str(item.get("Commit") or "")[:80]
