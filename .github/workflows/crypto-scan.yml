@@ -35,7 +35,6 @@ jobs:
       MAX_REPOS: ${{ inputs.max_repos || '80' }}
       PER_QUERY: "8"
       MAX_REPO_SIZE_KB: "50000"
-      GITHUB_SEARCH_LIMIT: "30"
       REPO_TIMEOUT_SECONDS: "240"
     steps:
       - name: Checkout scanner
