@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     const [repository, website] = await Promise.all([
       dispatchWorkflow(token, "crypto-scan.yml", { max_repos: "40" }),
-      dispatchWorkflow(token, "web-exposure-scan.yml", { max_sites: "30" })
+      dispatchWorkflow(token, "web-exposure-scan.yml", { max_sites: "1000" })
     ]);
     const ok = repository.queued && website.queued;
     return NextResponse.json({
