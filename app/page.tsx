@@ -14,6 +14,10 @@ export default async function Home(){
  return <>
   <header className="topbar"><div><div className="eyebrow">SECURITY OPERATIONS / OVERVIEW</div><h1 className="page-title">Exposure intelligence</h1><div className="page-subtitle">Public blockchain repository monitoring and responsible disclosure.</div></div><div className="top-actions"><span className="pill">ALL CHAINS · PUBLIC REPOS</span><RunScanButton/></div></header>
   {dbError&&<div className="notice"><strong>Database connection unavailable.</strong> Check DATABASE_URL in Vercel project settings and redeploy.</div>}
+  <section className="monitor-strip">
+   <div className="monitor-indicator"><span className="monitor-dot"/> <span><strong>Passive monitoring</strong><small>Public repositories and publicly reachable website assets</small></span></div>
+   <div className="monitor-meta"><span>NO CREDENTIAL LOGIN</span><span>NO BALANCE CHECKS</span><span>NO TRANSACTIONS</span></div>
+  </section>
   <LiveScanProgress initialRun={data?.runs?.[0] || null}/>
   <section className="grid stats">
    <div className="stat-card"><div className="stat-head">Repositories with findings <span className="stat-icon"><GitBranch size={15}/></span></div><div className="stat-value">{stats.repositories??"—"}</div><div className="stat-foot">Distinct repositories with open vulnerability candidates</div></div>
