@@ -414,7 +414,8 @@ def main() -> None:
         else:
             send_event("progress", run, summary, repo)
         # Mark the end of this repository scan after every finding batch has arrived.
-        send_event("repository_complete", run, summary, repo)
+        if status == "completed":
+            send_event("repository_complete", run, summary, repo)
     completed = utc_now()
     run["status"] = "completed"
     run["completed_at"] = completed
