@@ -11,7 +11,7 @@ export default async function WebsitesPage() {
     runs = await sql`SELECT id,status,sites_discovered,sites_scanned,findings_total,started_at,completed_at
       FROM website_scan_runs ORDER BY started_at DESC LIMIT 10`;
     findings = await sql`SELECT site_host,asset_url,rule_id,severity,confidence,line_number,status,last_seen_at
-      FROM website_findings WHERE COALESCE(status,'open') NOT IN ('false_positive','remediated') ORDER BY last_seen_at DESC LIMIT 100`;
+      FROM website_findings WHERE COALESCE(status,'open') NOT IN ('false_positive','remediated','not_observed') ORDER BY last_seen_at DESC LIMIT 100`;
   } catch {
     error = "Website scan data is temporarily unavailable.";
   }
