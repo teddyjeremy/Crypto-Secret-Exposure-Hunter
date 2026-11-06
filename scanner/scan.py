@@ -120,7 +120,7 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
         response = requests.get(
             f"{API}/search/repositories",
             params={
-                "q": f"{query} fork:false archived:false stars:>=0",
+                "q": f"{query} fork:false archived:false forks:<10",
                 "sort": "updated",
                 "order": "desc",
                 "per_page": min(per_ecosystem, 10),
@@ -144,6 +144,7 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
                 "ecosystem": ecosystem,
                 "description": (item.get("description") or "")[:300],
                 "stars": int(item.get("stargazers_count") or 0),
+                "forks": int(item.get("forks_count") or 0),
                 "default_branch": item.get("default_branch", ""),
                 "size_kb": size_kb,
                 "pushed_at": item.get("pushed_at"),
@@ -154,7 +155,8 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
         # Publish progress after each ecosystem query instead of leaving the dashboard frozen.
         if progress_callback:
             progress_callback(index + 1, len(discovery_queries), ecosystem, len(found))
-    return list(found.values())
+    # Prefer low-fork repositories so discovery is less dominated by already-popular projects.
+    return sorted(found.values(), key=lambda repo: (int(repo.get("forks") or 0), -int(repo.get("stars") or 0)))
 
 
 def default_branch_head(repo: dict[str, Any]) -> str | None:
