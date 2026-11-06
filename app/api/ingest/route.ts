@@ -63,7 +63,7 @@ export async function POST(request:NextRequest){
    let upserted=0;
    for(const f of findings){
     const fingerprint=clean(f.fingerprint,80);const fullName=clean(f.repository_full_name,200);
-    if(!/^[a-f0-9]{32,64}$/i.test(fingerprint)||!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(fullName))continue;
+    if(!/^[a-f0-9]{32,64}$/i.test(fingerprint)||!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(fullName)||!FUND_CONTROL_TYPES.has(clean(f.secret_type,120)))continue;
     const severity=["critical","high","medium","low"].includes(f.severity)?f.severity:"medium";
     const classification=["public_information","secret_candidate","uncertain"].includes(f.classification)?f.classification:"uncertain";
     const confidence=["low","medium","high"].includes(f.confidence)?f.confidence:"low";
