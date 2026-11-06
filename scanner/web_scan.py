@@ -276,6 +276,8 @@ def main():
         pass
     # Normalize candidate hosts before checking the persistent scan registry.
     sites = list(dict.fromkeys(sites))
+    discovered_total = len(sites)
+    skipped_recent = 0
     if WEB_INGEST_URL and sites:
         request_url = os.getenv("ACTIONS_ID_TOKEN_REQUEST_URL", "")
         request_token = os.getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "")
@@ -296,7 +298,8 @@ def main():
         visited = set(registry.json().get("recent_hosts", []))
         before = len(sites)
         sites = [site for site in sites if urlparse(site).hostname not in visited]
-        print(f"Persistent deduplication: skipped {before - len(sites)} sites scanned successfully in the last 30 days.")
+        skipped_recent = before - len(sites)
+        print(f"Persistent deduplication: skipped {skipped_recent} sites scanned successfully in the last 7 days.")
     sites = sites[:MAX_SITES]
     results_by_index = {}
     print(f"Starting passive scan of {len(sites)} candidate websites with {CONCURRENCY} workers.")
@@ -320,7 +323,8 @@ def main():
             print(f"Website progress: {completed}/{len(sites)} completed; "
                   f"status={result['status']}; findings={len(result.get('findings', []))}.")
     results = [results_by_index[i] for i in sorted(results_by_index)]
-    payload = {"scanner": "passive-public-web-v1", "sites_discovered": len(sites),
+    payload = {"scanner": "passive-public-web-v1", "sites_discovered": discovered_total,
+               "sites_selected": len(sites), "sites_skipped_recent": skipped_recent,
                "sites_scanned": sum(r["status"] == "completed" for r in results),
                "results": results}
     with open(OUTPUT, "w", encoding="utf-8") as file:
@@ -342,7 +346,7 @@ def main():
                      "x-vercel-protection-bypass": VERCEL_BYPASS,
                      "Content-Type": "application/json"},
             json={"run_id": str(uuid.uuid4()), "sites_discovered": payload["sites_discovered"],
-                  "sites_scanned": payload["sites_scanned"], "results": results},
+                  "sites_scanned": payload["sites_scanned"], "sites_skipped_recent": skipped_recent, "results": results},
             timeout=60)
         if ingest.status_code != 200:
             raise RuntimeError(f"Website result ingestion failed with HTTP {ingest.status_code}.")
