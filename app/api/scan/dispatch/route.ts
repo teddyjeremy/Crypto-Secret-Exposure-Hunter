@@ -44,6 +44,37 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // Check the real GitHub Actions state before dispatching either workflow.
+    // Fail closed if GitHub cannot confirm that both workflows are idle.
+    const workflowNames = ["crypto-scan.yml", "web-exposure-scan.yml"];
+    const activeRuns = await Promise.all(workflowNames.map(async (workflow) => {
+      const statusResponse = await fetch(
+        `https://api.github.com/repos/${OWNER}/${REPOSITORY}/actions/workflows/${workflow}/runs?per_page=10`,
+        {
+          headers: {
+            "Accept": "application/vnd.github+json",
+            "Authorization": `Bearer ${token}`,
+            "X-GitHub-Api-Version": "2022-11-28"
+          },
+          cache: "no-store",
+          signal: AbortSignal.timeout(10000)
+        }
+      );
+      if (!statusResponse.ok) throw new Error("Could not verify current GitHub workflow status.");
+      const body = await statusResponse.json() as { workflow_runs?: Array<{ id: number; status: string; html_url: string }> };
+      const active = (body.workflow_runs || []).find((run) =>
+        ["queued", "in_progress", "waiting", "requested"].includes(run.status)
+      );
+      return active ? { workflow, ...active } : null;
+    }));
+    const running = activeRuns.filter(Boolean);
+    if (running.length) {
+      return NextResponse.json({
+        error: "A repository or website scan is already queued or running. Wait for it to finish before starting another scan.",
+        active: running
+      }, { status: 409, headers: { "Cache-Control": "no-store" } });
+    }
+
     const sql = getDb();
     const lock = await sql`INSERT INTO scan_dispatch_guard(id,last_requested_at)
       VALUES(1,NOW())
