@@ -247,7 +247,7 @@ def discover_sites() -> list[str]:
                         )
                         if readme.status_code == 200:
                             body = readme.text[:300000]
-                            candidates.extend(re.findall(r"https?://[^\\s\\])>\\\"']+", body)[:12])
+                            candidates.extend(re.findall(r"https?://[^\s\])>\"']+", body)[:12])
                     except requests.RequestException:
                         pass
                 for candidate in candidates:
