@@ -60,26 +60,26 @@ export function LiveScanProgress({ initialRun }: { initialRun?: ScanRun | null }
   const running = run.status === "running";
   return <section className="panel" style={{marginBottom:18}}>
     <div className="panel-head">
-      <div><div className="panel-title">Live scan progress</div><div className="panel-kicker" style={{marginTop:4}}>LIVE UPDATES · 5 SECOND REFRESH</div></div>
+      <div><div className="panel-title">Live scan progress</div><div className="panel-kicker" style={{marginTop:4}}>LIVE WORKER TELEMETRY · REFRESHES EVERY 5 SECONDS</div></div>
       <span className={`badge ${running ? "medium" : run.status === "completed" ? "new" : "low"}`}>{label(run.status)}</span>
     </div>
     <div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap",fontSize:12,color:"var(--muted)"}}>
-      <span>{summary.message || "Waiting for worker progress…"}</span>
+      <span>{summary.message || "Waiting for the scanner to publish its first progress update…"}</span>
       <strong style={{color:"var(--text)"}}>{processed}/{candidates} processed · {scanned} successful · {Number(run.findings_total || 0)} findings · {skipped} unchanged skipped</strong>
     </div>
-    <div style={{height:7,background:"var(--surface-2)",borderRadius:99,overflow:"hidden",marginTop:12}}>
-      <div style={{height:"100%",width:`${percent}%`,background:"var(--accent)",borderRadius:99,transition:"width .25s ease"}}/>
+    <div style={{height:7,background:"#17232c",borderRadius:99,overflow:"hidden",marginTop:12}}>
+      <div style={{height:"100%",width:`${percent}%`,background:"var(--green)",borderRadius:99,transition:"width .25s ease"}}/>
     </div>
     <div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:10,color:"var(--muted)"}}>
       <span>{label(summary.phase)} · {percent}%</span><span>{updated ? `Updated ${updated}` : "Connecting…"}</span>
     </div>
-    {summary.current_repository && <div style={{marginTop:12,padding:10,borderRadius:8,background:"var(--surface-2)",fontSize:11}}>
-      <span style={{color:"var(--muted)"}}>CURRENT REPOSITORY</span><div className="mono" style={{marginTop:4,color:"var(--text)"}}>{summary.current_repository}</div>
+    {summary.current_repository && <div style={{marginTop:12,padding:10,borderRadius:8,background:"#17232c",fontSize:11}}>
+      <span style={{color:"var(--muted)"}}>CURRENTLY PROCESSING</span><div className="mono" style={{marginTop:4,color:"var(--text)"}}>{summary.current_repository}</div>
     </div>}
     {repos.length > 0 && <div style={{marginTop:14}}>
       <div className="panel-kicker" style={{marginBottom:8}}>REPOSITORIES IN THIS RUN ({repos.length})</div>
       <div style={{maxHeight:270,overflowY:"auto",display:"grid",gap:1}}>
-        {repos.map((repo,index) => <div key={repo.full_name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,padding:"8px 2px",borderBottom:"1px solid var(--border)",fontSize:11}}>
+        {repos.map((repo,index) => <div key={repo.full_name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,padding:"8px 2px",borderBottom:"1px solid var(--line)",fontSize:11}}>
           <div style={{minWidth:0}}><a href={repo.html_url || `https://github.com/${repo.full_name}`} target="_blank" rel="noreferrer" className="repo-name">{repo.full_name}</a><div style={{color:"var(--muted)",fontSize:10,marginTop:3}}>{repo.ecosystem || "Web3"}</div></div>
           <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}><span style={{color:"var(--muted)"}}>{repo.finding_count ?? 0} findings</span><span style={{color:color(repo.status),textTransform:"capitalize"}}>{label(repo.status)}</span></div>
         </div>)}
