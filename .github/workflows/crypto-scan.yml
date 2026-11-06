@@ -33,6 +33,7 @@ jobs:
       INGEST_URL: https://crypto-secret-exposure-hunter.vercel.app/api/ingest
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       MAX_REPOS: ${{ inputs.max_repos || '80' }}
+      SCAN_WORKERS: "3"
       PER_QUERY: "8"
       MAX_REPO_SIZE_KB: "50000"
       REPO_TIMEOUT_SECONDS: "240"
