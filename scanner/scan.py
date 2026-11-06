@@ -8,6 +8,9 @@ import subprocess
 import tempfile
 import time
 import uuid
+import queue
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -212,6 +215,7 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
         + [(name, query, secondary_quota) for name, query in secondary_queries]
     )
     for index, (ecosystem, query, query_quota) in enumerate(discovery_queries):
+        newly_added: list[dict[str, Any]] = []
         if len(found) >= MAX_REPOS and index >= len(PRIORITY_CATEGORIES):
             break
         _wait_for_search_budget()
@@ -261,11 +265,12 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
                 "pushed_at": item.get("pushed_at"),
                 "status": "pending",
             }
+            newly_added.append(found[repo_key])
             if len(found) >= MAX_REPOS:
                 break
         # Publish progress after each ecosystem query instead of leaving the dashboard frozen.
         if progress_callback:
-            progress_callback(index + 1, len(discovery_queries), ecosystem, len(found))
+            progress_callback(index + 1, len(discovery_queries), ecosystem, len(found), newly_added)
     def priority(repo: dict[str, Any]) -> tuple[int, int, int]:
         try:
             pushed_epoch = int(datetime.fromisoformat(
@@ -453,6 +458,35 @@ def send_event(event: str, run: dict[str, Any], summary: dict[str, Any],
         raise RuntimeError(f"Progress ingestion failed with HTTP {response.status_code}; response body suppressed.")
 
 
+def _post_event_with_retry(event: str, run: dict[str, Any], summary: dict[str, Any],
+                          repo: dict[str, Any] | None = None,
+                          findings: list[dict[str, Any]] | None = None) -> bool:
+    for attempt in range(3):
+        try:
+            send_event(event, run, summary, repo, findings)
+            return True
+        except Exception as exc:
+            print(f"Dashboard update attempt {attempt + 1}/3 failed ({type(exc).__name__}); scan continues.")
+            if attempt < 2:
+                time.sleep(2 ** attempt)
+    return False
+
+
+def _registry_lookup(repositories: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    if not repositories:
+        return {}
+    payload = {"event": "registry", "repository_names": [r["full_name"] for r in repositories]}
+    auth_headers = {"Content-Type": "application/json", "x-vercel-protection-bypass": VERCEL_BYPASS}
+    if WORKER_INGEST_TOKEN:
+        auth_headers["x-worker-token"] = WORKER_INGEST_TOKEN
+    else:
+        auth_headers["Authorization"] = f"Bearer {github_oidc_token()}"
+    response = requests.post(INGEST_URL, headers=auth_headers, json=payload, timeout=30)
+    response.raise_for_status()
+    rows = response.json().get("repositories", [])
+    return {r["full_name"]: r for r in rows if isinstance(r, dict) and r.get("full_name")}
+
+
 def main() -> None:
     if not INGEST_URL.startswith("https://"):
         raise RuntimeError("INGEST_URL must be an HTTPS endpoint.")
@@ -462,120 +496,145 @@ def main() -> None:
         raise RuntimeError("Set WORKER_INGEST_TOKEN for a hosted worker or run inside GitHub Actions.")
 
     run_id = str(uuid.uuid4())
-    started = utc_now()
-    run = {
-        "id": run_id,
-        "status": "running",
-        "trigger_source": "hosted-worker" if WORKER_INGEST_TOKEN else "github-actions",
-        "started_at": started,
-        "completed_at": None,
-        "repositories_discovered": 0,
-        "repositories_scanned": 0,
-        "findings_total": 0,
-    }
+    run = {"id": run_id, "status": "running",
+           "trigger_source": "hosted-worker" if WORKER_INGEST_TOKEN else "github-actions",
+           "started_at": utc_now(), "completed_at": None,
+           "repositories_discovered": 0, "repositories_scanned": 0, "findings_total": 0}
     summary: dict[str, Any] = {
         "phase": "discovering",
-        "message": "Searching public crypto project categories, blockchain ecosystems, and trading bots.",
-        "progress_percent": 0,
-        "current_repository": None,
-        "status_counts": {},
-        "repositories": [],
-        "ecosystems": list(ECOSYSTEMS.keys()),
+        "message": "Discovering public crypto repositories; scans start as soon as each batch is found.",
+        "progress_percent": 0, "current_repository": None, "status_counts": {},
+        "repositories": [], "ecosystems": list(ECOSYSTEMS.keys()),
+        "repositories_skipped_unchanged": 0,
     }
-    send_event("progress", run, summary)
-    print("Discovering public repositories across crypto project categories and blockchain ecosystems.")
+    _post_event_with_retry("progress", run, summary)
+    work_queue: queue.Queue[Any] = queue.Queue(maxsize=max(8, MAX_REPOS))
+    discovery_errors: list[str] = []
+    discovered_names: set[str] = set()
+    state_lock = threading.Lock()
+    counts: dict[str, int] = {}
 
-    def report_discovery_progress(index: int, total: int, ecosystem: str, found_count: int) -> None:
-        summary["phase"] = "discovering"
-        summary["message"] = f"Searching {ecosystem} ({index}/{total} ecosystems); {found_count} repositories found so far."
-        summary["progress_percent"] = round((index / max(1, total)) * 10)
-        send_event("progress", run, summary)
-
-    repositories = discover(report_discovery_progress)
-    for repository in repositories:
-        repository["head_sha"] = default_branch_head(repository)
-    registry_payload = {"event": "registry", "repository_names": [r["full_name"] for r in repositories]}
-    registry_headers = {"Content-Type": "application/json", "x-vercel-protection-bypass": VERCEL_BYPASS}
-    if WORKER_INGEST_TOKEN:
-        registry_headers["x-worker-token"] = WORKER_INGEST_TOKEN
-    else:
-        registry_headers["Authorization"] = f"Bearer {github_oidc_token()}"
-    registry_response = requests.post(INGEST_URL, headers=registry_headers, json=registry_payload, timeout=30)
-    registry_response.raise_for_status()
-    registry_rows = registry_response.json().get("repositories", [])
-    previous = {r["full_name"]: r for r in registry_rows if isinstance(r, dict) and r.get("full_name")}
-    discovered_count = len(repositories)
-    repositories = [r for r in repositories if not (
-        previous.get(r["full_name"], {}).get("latest_status") == "completed"
-        and bool(r.get("head_sha"))
-        and previous.get(r["full_name"], {}).get("last_scanned_commit") == r.get("head_sha")
-    )]
-    run["repositories_discovered"] = discovered_count
-    summary.update({
-        "phase": "scanning",
-        "repositories_skipped_unchanged": discovered_count - len(repositories),
-        "message": f"Discovered {discovered_count} repositories; {len(repositories)} are new or changed. Starting scans.",
-        "progress_percent": 0,
-        "repositories": [
-            {
-                "full_name": r["full_name"],
-                "html_url": r["html_url"],
-                "ecosystem": r["ecosystem"],
-                "status": "pending",
-            } for r in repositories
-        ],
-    })
-    send_event("progress", run, summary)
-
-    scanned = 0
-    all_findings: list[dict[str, Any]] = []
-    errors: dict[str, int] = {}
-    for index, repo in enumerate(repositories, start=1):
-        summary["phase"] = "scanning"
-        summary["current_repository"] = repo["full_name"]
-        summary["message"] = f"Scanning {repo['full_name']} ({index}/{len(repositories)})."
-        summary["progress_percent"] = round(((index - 1) / max(1, len(repositories))) * 100)
-        # Publish the in-flight repository before the clone and Gitleaks scan begin.
-        send_event("progress", run, summary, repo)
-        print(f"[{index}/{len(repositories)}] Scanning {repo['full_name']} ({repo['ecosystem']})")
+    def publish_discovery(index: int, total: int, ecosystem: str, found_count: int,
+                          newly_added: list[dict[str, Any]]) -> None:
+        # Registry lookup is performed batch-by-batch, while workers continue
+        # scanning repositories already queued from earlier search categories.
+        changed: list[dict[str, Any]] = []
         try:
-            status, findings = scan_repository(repo)
-        except Exception:
-            status, findings = "worker_error", []
-        repo["status"] = status
-        scanned += int(status == "completed")
-        errors[status] = errors.get(status, 0) + 1
-        remaining = max(0, 3000 - len(all_findings))
-        findings_to_send = findings[:remaining]
-        all_findings.extend(findings_to_send)
-        run["repositories_scanned"] = scanned
-        run["findings_total"] = len(all_findings)
-        summary["status_counts"] = errors
-        summary["progress_percent"] = round((index / max(1, len(repositories))) * 100)
-        summary["message"] = f"Finished {repo['full_name']}: {status}."
-        for entry in summary["repositories"]:
-            if entry["full_name"] == repo["full_name"]:
-                entry["status"] = status
-                entry["finding_count"] = len(findings)
-                break
-        # Persist each repository result immediately in bounded batches; findings contain metadata only.
-        if findings_to_send:
-            for offset in range(0, len(findings_to_send), 500):
-                send_event("progress", run, summary, repo, findings_to_send[offset:offset + 500])
-        else:
-            send_event("progress", run, summary, repo)
-        # Mark the end of this repository scan after every finding batch has arrived.
-        if status == "completed":
-            send_event("repository_complete", run, summary, repo)
-    completed = utc_now()
-    run["status"] = "completed"
-    run["completed_at"] = completed
-    summary["phase"] = "completed"
+            previous = _registry_lookup(newly_added)
+        except Exception as exc:
+            previous = {}
+            print(f"Registry lookup unavailable for {ecosystem} ({type(exc).__name__}); scanning candidates without skip.")
+        for repo in newly_added:
+            repo["head_sha"] = default_branch_head(repo)
+            prior = previous.get(repo["full_name"], {})
+            unchanged = (prior.get("latest_status") == "completed"
+                         and bool(repo.get("head_sha"))
+                         and prior.get("last_scanned_commit") == repo.get("head_sha"))
+            if unchanged:
+                with state_lock:
+                    summary["repositories_skipped_unchanged"] += 1
+                continue
+            changed.append(repo)
+            with state_lock:
+                discovered_names.add(repo["full_name"])
+                summary["repositories"].append({
+                    "full_name": repo["full_name"], "html_url": repo["html_url"],
+                    "ecosystem": repo["ecosystem"], "status": "pending",
+                })
+        for repo in changed:
+            work_queue.put(repo)
+        with state_lock:
+            run["repositories_discovered"] = found_count
+            summary["phase"] = "discovering_and_scanning"
+            summary["message"] = (
+                f"Searching {ecosystem} ({index}/{total}); {found_count} unique repositories found. "
+                f"{work_queue.qsize()} waiting for scan workers."
+            )
+            summary["progress_percent"] = min(10, round(index / max(1, total) * 10))
+        _post_event_with_retry("progress", run, summary)
+
+    def producer() -> None:
+        try:
+            discover(publish_discovery)
+        except Exception as exc:
+            discovery_errors.append(type(exc).__name__)
+            print(f"Repository discovery stopped safely ({type(exc).__name__}); queued work will finish.")
+        finally:
+            for _ in range(min(3, max(1, int(os.getenv("SCAN_WORKERS", "3"))))):
+                work_queue.put(None)
+
+    worker_count = min(4, max(1, int(os.getenv("SCAN_WORKERS", "3"))))
+    producer_thread = threading.Thread(target=producer, name="repository-discovery", daemon=True)
+    producer_thread.start()
+    all_findings: list[dict[str, Any]] = []
+    status_counts: dict[str, int] = {}
+    completed_count = 0
+    futures: dict[Any, dict[str, Any]] = {}
+    with ThreadPoolExecutor(max_workers=worker_count) as pool:
+        sentinels = 0
+        while sentinels < worker_count or futures:
+            while sentinels < worker_count and len(futures) < worker_count:
+                item = work_queue.get()
+                if item is None:
+                    sentinels += 1
+                    continue
+                futures[pool.submit(scan_repository, item)] = item
+                item["status"] = "scanning"
+                _post_event_with_retry("progress", run, summary, item)
+                print(f"Started scanning {item['full_name']} ({item['ecosystem']}); workers={worker_count}.")
+            if futures:
+                done, _ = wait(futures, return_when=FIRST_COMPLETED)
+                for future in done:
+                    repo = futures.pop(future)
+                    try:
+                        status, findings = future.result()
+                    except Exception as exc:
+                        status, findings = "worker_error", []
+                        print(f"Repository worker failed for {repo['full_name']} ({type(exc).__name__}).")
+                    repo["status"] = status
+                    completed_count += int(status == "completed")
+                    status_counts[status] = status_counts.get(status, 0) + 1
+                    remaining = max(0, 3000 - len(all_findings))
+                    batch = findings[:remaining]
+                    all_findings.extend(batch)
+                    run["repositories_scanned"] = completed_count
+                    run["findings_total"] = len(all_findings)
+                    summary["status_counts"] = dict(status_counts)
+                    total_known = max(1, len(summary["repositories"]))
+                    summary["progress_percent"] = min(99, round(
+                        completed_count / total_known * 100
+                    ))
+                    summary["message"] = f"Finished {repo['full_name']}: {status}."
+                    for entry in summary["repositories"]:
+                        if entry["full_name"] == repo["full_name"]:
+                            entry["status"] = status
+                            entry["finding_count"] = len(findings)
+                            break
+                    if batch:
+                        for offset in range(0, len(batch), 250):
+                            _post_event_with_retry("progress", run, summary, repo, batch[offset:offset + 250])
+                    else:
+                        _post_event_with_retry("progress", run, summary, repo)
+                    if status == "completed":
+                        _post_event_with_retry("repository_complete", run, summary, repo)
+    producer_thread.join()
+    finished = utc_now()
+    run["status"] = "completed" if not discovery_errors else "partial"
+    run["completed_at"] = finished
+    summary["phase"] = "completed" if not discovery_errors else "partial"
     summary["current_repository"] = None
     summary["progress_percent"] = 100
-    summary["message"] = f"Scan completed: {scanned}/{len(repositories)} repositories scanned."
-    send_event("complete", run, summary)
-    print(f"Completed: {scanned}/{len(repositories)} repositories scanned; {len(all_findings)} sanitized findings ingested.")
+    summary["message"] = (
+        f"Scan finished: {completed_count} repositories scanned; "
+        f"{summary['repositories_skipped_unchanged']} unchanged skipped."
+    )
+    if discovery_errors:
+        summary["discovery_error"] = discovery_errors[0]
+    _post_event_with_retry("complete", run, summary)
+    print(summary["message"])
+
+
+from concurrent.futures import FIRST_COMPLETED, wait
 
 
 if __name__ == "__main__":
