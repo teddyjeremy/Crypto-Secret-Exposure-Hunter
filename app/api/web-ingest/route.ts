@@ -10,6 +10,7 @@ const WORKFLOW = `${REPOSITORY}/.github/workflows/web-exposure-scan.yml@refs/hea
 const JWKS = createRemoteJWKSet(new URL(`${ISSUER}/.well-known/jwks`));
 const clean = (v: unknown, max = 500) => typeof v === "string" ? v.slice(0, max) : "";
 const integer = (v: unknown) => typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : null;
+const WALLET_RULES = new Set(["solana_secret_key_array","solana_secret_key_base58","mnemonic_assignment","evm_wallet_private_key","bitcoin_wif_private_key","extended_wallet_private_key"]);
 
 async function authorized(request: NextRequest) {
   const header = request.headers.get("authorization") || "";
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
       const assetUrl = clean(f?.asset_url, 1000);
       let parsed: URL;
       try { parsed = new URL(assetUrl); } catch { return []; }
-      if (!/^[a-f0-9]{64}$/i.test(fingerprint) || parsed.protocol !== "https:"
+      if (!WALLET_RULES.has(clean(f?.rule_id, 100)) || !/^[a-f0-9]{64}$/i.test(fingerprint) || parsed.protocol !== "https:"
         || !(parsed.hostname === host || parsed.hostname.endsWith("." + host))) return [];
       const severity = ["critical", "high", "medium", "low"].includes(f?.severity) ? f.severity : "medium";
       const confidence = ["high", "medium", "low"].includes(f?.confidence) ? f.confidence : "low";
