@@ -31,6 +31,7 @@ export function RunScanButton() {
   const refreshStatus = useCallback(async () => {
     try {
       const response = await fetch("/api/scan/status", { cache: "no-store" });
+      if (!response.ok) throw new Error("Status request failed");
       const data = await response.json() as WorkflowStatus;
       setWorkflowStatus(data);
     } catch {
@@ -42,9 +43,13 @@ export function RunScanButton() {
   }, []);
 
   useEffect(() => {
-    void refreshStatus();
-    const timer = window.setInterval(() => void refreshStatus(), 10000);
-    return () => window.clearInterval(timer);
+    // Defer the initial network request until after the effect has completed.
+    const initialTimer = window.setTimeout(() => { void refreshStatus(); }, 0);
+    const intervalTimer = window.setInterval(() => { void refreshStatus(); }, 10000);
+    return () => {
+      window.clearTimeout(initialTimer);
+      window.clearInterval(intervalTimer);
+    };
   }, [refreshStatus]);
 
   async function startBothScans() {
@@ -64,7 +69,7 @@ export function RunScanButton() {
         await refreshStatus();
       } else if (response.ok) {
         setWorkflowStatus({ available: true, active: true });
-        window.setTimeout(() => void refreshStatus(), 2500);
+        window.setTimeout(() => { void refreshStatus(); }, 2500);
       }
     } catch {
       setResult({ error: "Could not contact the scan dispatcher. Please try again." });
@@ -98,7 +103,7 @@ export function RunScanButton() {
     </div>}
     {result && <div role="status" aria-live="polite" style={{maxWidth:330,fontSize:11,textAlign:"right",lineHeight:1.55,color:bothQueued?"var(--green)":"var(--muted)"}}>
       {bothQueued ? <><CheckCircle2 size={13} style={{verticalAlign:"-2px",marginRight:5}}/>Repository and website scans queued concurrently.</> :
-        <><AlertCircle size={13} style={{verticalAlign:"-2px",marginRight:5,color:"var(--red)"}}/>{result.error || "One or more workflows could not be queued."}</>}
+        <><AlertCircle size={13} style={{verticalAlign:"-2px",marginRight:5,color:"var(--red)"}/>{result.error || "One or more workflows could not be queued."}</>}
       {(result?.repository?.queued || result?.website?.queued) && <div style={{marginTop:3,display:"flex",gap:10,justifyContent:"end"}}>
         {result.repository?.queued && <a href="https://github.com/teddyjeremy/Crypto-Secret-Exposure-Hunter/actions/workflows/crypto-scan.yml" target="_blank" rel="noreferrer">Repository run <ExternalLink size={10}/></a>}
         {result.website?.queued && <a href="https://github.com/teddyjeremy/Crypto-Secret-Exposure-Hunter/actions/workflows/web-exposure-scan.yml" target="_blank" rel="noreferrer">Website run <ExternalLink size={10}/></a>}
