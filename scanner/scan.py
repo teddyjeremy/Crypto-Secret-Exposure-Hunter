@@ -110,9 +110,35 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
         ("Crypto Trading Bots", "freqtrade"),
         ("Crypto Trading Bots", "hummingbot"),
     ]
-    # Keep all blockchain ecosystem searches while reserving six discovery
-    # slots for trading-bot projects within the existing repository cap.
-    discovery_queries = bot_queries + list(ECOSYSTEMS.items())
+    # Search crypto project categories as well as chain ecosystems. These are
+    # discovery labels only: every repository receives the same passive Gitleaks scan.
+    project_queries = [
+        ("Crypto Wallets", '"crypto wallet"'),
+        ("Hardware / Self-Custody Wallets", '"self custody wallet"'),
+        ("Crypto Exchanges", '"crypto exchange"'),
+        ("Decentralized Exchanges", '"decentralized exchange"'),
+        ("DeFi Protocols", '"DeFi protocol"'),
+        ("Lending / Borrowing", '"crypto lending protocol"'),
+        ("Yield / Farming", '"yield farming"'),
+        ("Staking / Validators", '"staking validator"'),
+        ("Token Launchpads", '"token launchpad"'),
+        ("Memecoins", '"memecoin"'),
+        ("NFT Projects", '"NFT marketplace"'),
+        ("NFT Infrastructure", '"NFT protocol"'),
+        ("Bridges / Interoperability", '"cross chain bridge"'),
+        ("Oracles", '"blockchain oracle"'),
+        ("Payments / Invoicing", '"crypto payments"'),
+        ("Stablecoins", '"stablecoin"'),
+        ("Blockchain Explorers", '"blockchain explorer"'),
+        ("RPC / Node Infrastructure", '"blockchain RPC"'),
+        ("Smart Contract Tooling", '"smart contract"'),
+        ("DAO / Governance", '"DAO governance"'),
+        ("Identity / Credentials", '"web3 identity"'),
+        ("Gaming / Metaverse", '"web3 game"'),
+        ("Privacy / ZK", '"zero knowledge blockchain"'),
+        ("Crypto Analytics / Indexers", '"crypto analytics"'),
+    ]
+    discovery_queries = bot_queries + project_queries + list(ECOSYSTEMS.items())
     per_ecosystem = max(1, min(PER_QUERY, MAX_REPOS // max(1, len(discovery_queries))))
     for index, (ecosystem, query) in enumerate(discovery_queries):
         if len(found) >= MAX_REPOS:
@@ -325,7 +351,7 @@ def main() -> None:
     }
     summary: dict[str, Any] = {
         "phase": "discovering",
-        "message": "Searching public repositories by blockchain ecosystem and crypto trading-bot projects.",
+        "message": "Searching public crypto project categories, blockchain ecosystems, and trading bots.",
         "progress_percent": 0,
         "current_repository": None,
         "status_counts": {},
@@ -333,7 +359,7 @@ def main() -> None:
         "ecosystems": ["Crypto Trading Bots", *ECOSYSTEMS.keys()],
     }
     send_event("progress", run, summary)
-    print("Discovering public repositories by ecosystem and crypto trading-bot metadata.")
+    print("Discovering public repositories across crypto project categories and blockchain ecosystems.")
 
     def report_discovery_progress(index: int, total: int, ecosystem: str, found_count: int) -> None:
         summary["phase"] = "discovering"
