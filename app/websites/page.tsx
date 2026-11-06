@@ -33,7 +33,7 @@ export default async function WebsitesPage() {
     runs = await sql`SELECT id,status,sites_discovered,sites_scanned,findings_total,started_at,completed_at
       FROM website_scan_runs ORDER BY started_at DESC LIMIT 10`;
     findings = await sql`SELECT fingerprint,site_host,asset_url,rule_id,severity,confidence,line_number,status,last_seen_at
-      FROM website_findings WHERE COALESCE(status,'open') NOT IN ('false_positive','remediated','not_observed')
+      FROM website_findings WHERE rule_id IN ('solana_secret_key_array','solana_secret_key_base58','mnemonic_assignment','evm_wallet_private_key','bitcoin_wif_private_key','extended_wallet_private_key') AND COALESCE(status,'open') NOT IN ('false_positive','remediated','not_observed')
       ORDER BY last_seen_at DESC LIMIT 100`;
   } catch {
     error = "Website scan data is temporarily unavailable.";
