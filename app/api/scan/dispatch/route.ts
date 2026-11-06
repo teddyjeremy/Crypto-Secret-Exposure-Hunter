@@ -23,7 +23,7 @@ async function dispatchWorkflow(token: string, workflow: string, inputs: Record<
   if (response.status !== 204) {
     const detail = await response.text().catch(() => "");
     return { queued: false, message: response.status === 404 || response.status === 403
-      ? "GitHub rejected workflow dispatch. Check that GITHUB_DISPATCH_TOKEN has Actions: write and Metadata: read access."
+      ? "GitHub rejected workflow dispatch. Check that GITHUB_DISPATCH_TOKEN has Actions: read and write, and Metadata: read access."
       : `GitHub workflow dispatch failed (HTTP ${response.status}). ${detail.slice(0, 180)}` };
   }
   return { queued: true, message: "Workflow dispatch accepted by GitHub." };
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   const token = process.env.GITHUB_DISPATCH_TOKEN;
   if (!token) {
     return NextResponse.json({
-      error: "GITHUB_DISPATCH_TOKEN is missing from Vercel. Add a fine-grained GitHub token with Actions: write and Metadata: read access to this repository, then redeploy."
+      error: "GITHUB_DISPATCH_TOKEN is missing from Vercel. Add a fine-grained GitHub token with Actions: read and write, and Metadata: read access to this repository, then redeploy."
     }, { status: 503 });
   }
 
