@@ -104,18 +104,12 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
     # archived repositories too: abandoned bot projects can still expose old credentials.
     bot_queries = [
         ("Crypto Trading Bots", '"crypto trading bot"'),
-        ("Crypto Trading Bots", '"cryptocurrency trading bot"'),
-        ("Crypto Trading Bots", '"binance trading bot"'),
         ("Crypto Trading Bots", "ccxt"),
-        ("Crypto Trading Bots", "freqtrade"),
-        ("Crypto Trading Bots", "hummingbot"),
     ]
     wallet_queries = [
         ("Solana", "solana wallet"),
         ("Ethereum / EVM", "ethereum wallet"),
-        ("Other Web3", "web3 wallet"),
         ("Other Web3", "crypto wallet"),
-        ("Other Web3", "blockchain wallet"),
         ("Other Web3", "walletconnect"),
     ]
     discovery_queries = bot_queries + list(ECOSYSTEMS.items()) + wallet_queries
@@ -331,15 +325,15 @@ def main() -> None:
     }
     summary: dict[str, Any] = {
         "phase": "discovering",
-        "message": "Searching public repositories by blockchain ecosystem.",
+        "message": "Searching public repositories by blockchain ecosystem and crypto trading-bot projects.",
         "progress_percent": 0,
         "current_repository": None,
         "status_counts": {},
         "repositories": [],
-        "ecosystems": list(ECOSYSTEMS.keys()),
+        "ecosystems": ["Crypto Trading Bots", *ECOSYSTEMS.keys()],
     }
     send_event("progress", run, summary)
-    print("Discovering public repositories by ecosystem metadata.")
+    print("Discovering public repositories by ecosystem and crypto trading-bot metadata.")
 
     def report_discovery_progress(index: int, total: int, ecosystem: str, found_count: int) -> None:
         summary["phase"] = "discovering"
