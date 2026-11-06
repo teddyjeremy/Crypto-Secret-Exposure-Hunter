@@ -239,12 +239,13 @@ def sanitize_report(raw: Any, repo: dict[str, Any]) -> list[dict[str, Any]]:
     safe: list[dict[str, Any]] = []
     if not isinstance(raw, list):
         return safe
-    # Only report wallet-signing material. Exchange API permissions cannot be
-    # established safely from a leaked API key/secret, so those are excluded.
+    # Wallet signing material plus exchange-specific API credential candidates.
+    # Permission status is always unknown; credentials are never tested.
     allowed_rules = {
         "solana-keypair-json", "mnemonic-seed-phrase", "private-key-context-hex",
         "solana-base58-private-key", "evm-private-key", "bitcoin-wif-private-key",
-        "extended-wallet-private-key",
+        "extended-wallet-private-key", "exchange-api-key", "exchange-api-secret",
+        "exchange-api-passphrase",
     }
     for item in raw:
         if not isinstance(item, dict):
@@ -262,6 +263,28 @@ def sanitize_report(raw: Any, repo: dict[str, Any]) -> list[dict[str, Any]]:
             f"{repo['full_name']}|{rule}|{path}|{commit}|{line}".encode("utf-8")
         ).hexdigest()
         classification = classify_gitleaks_rule(rule, description)
+        if rule.startswith("exchange-api-"):
+            # Extract only a provider label from the assignment name; never persist
+            # the matched value, source line, or raw Gitleaks Match field.
+            raw_match = str(item.get("Match") or "")
+            provider_names = {
+                "OKX": r"OKX", "Binance": r"BINANCE", "Coinbase": r"COINBASE",
+                "Kraken": r"KRAKEN", "Bybit": r"BYBIT", "KuCoin": r"KUCOIN",
+                "Gate.io": r"GATE[._ -]?IO", "Bitget": r"BITGET", "MEXC": r"MEXC",
+                "HTX": r"HTX|HUOBI", "Crypto.com": r"CRYPTO[._ -]?COM",
+                "Gemini": r"GEMINI", "Bitfinex": r"BITFINEX", "Deribit": r"DERIBIT",
+                "Bitstamp": r"BITSTAMP", "BingX": r"BINGX", "CoinEx": r"COINEX",
+            }
+            provider = next((name for name, pattern in provider_names.items()
+                             if re.search(pattern, raw_match, re.IGNORECASE)), "Exchange")
+            kind = rule.removeprefix("exchange-api-")
+            safe_description = f"{provider} exchange API {kind} candidate; permissions unknown."
+            classification = type(classification)(
+                classification.category, f"exchange_api_{kind}", classification.confidence,
+                "Exchange-specific API credential pattern; permissions have not been verified."
+            )
+        else:
+            safe_description = description
         safe.append({
             "fingerprint": fingerprint,
             "repository_full_name": repo["full_name"],
@@ -271,7 +294,7 @@ def sanitize_report(raw: Any, repo: dict[str, Any]) -> list[dict[str, Any]]:
             "secret_type": classification.secret_type,
             "confidence": classification.confidence,
             "rule_id": rule,
-            "description": description,
+            "description": safe_description,
             "file_path": path,
             "line_number": line,
             "commit_sha": commit,
