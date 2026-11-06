@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ExternalLink, FileCode2, Loader2, ShieldCheck } from "lucide-react";
 
-export default function WebsiteSourceViewer() {
+function WebsiteSourceViewerContent() {
   const params = useSearchParams();
   const asset = params.get("asset") || "";
   const line = Math.max(1, Number(params.get("line")) || 1);
@@ -70,8 +70,7 @@ export default function WebsiteSourceViewer() {
     {status === "ready" && <div className="overflow-hidden rounded-xl border">
       <div className="border-b bg-muted/40 px-4 py-2 text-xs text-muted-foreground">LOCATION IN FILE</div>
       <div className="max-h-[55vh] overflow-auto py-2 font-mono text-sm">
-        {Array.from({ length: Math.min(lineCount, 5000) }, (_, i) => i + 1)
-          .filter((n) => n >= Math.max(1, line - 5) && n <= Math.min(lineCount, line + 5))
+        {Array.from({ length: Math.max(0, Math.min(lineCount, line + 5) - Math.max(1, line - 5) + 1) }, (_, i) => Math.max(1, line - 5) + i)
           .map((n) => <div key={n} id={n === line ? "detected-line" : undefined}
             className={n === line ? "flex items-center gap-4 border-y border-amber-500/40 bg-amber-500/10 px-4 py-3 text-amber-200" : "flex gap-4 px-4 py-2 text-muted-foreground"}>
             <span className="w-12 shrink-0 select-none text-right opacity-60">{n}</span>
@@ -83,4 +82,9 @@ export default function WebsiteSourceViewer() {
     {status === "error" && <div className="rounded-xl border p-4 text-sm"><p>{message}</p></div>}
     <div className="flex items-start gap-2 rounded-xl border p-4 text-sm text-muted-foreground"><ShieldCheck size={17} className="mt-0.5 shrink-0" /><p>To inspect the actual source safely, use the line number in a local text editor. Do not copy, test, or use any credential you encounter.</p></div>
   </main>;
+}
+
+
+export default function WebsiteSourceViewer() {
+  return <Suspense fallback={<main className="mx-auto max-w-4xl px-5 py-10 text-sm text-muted-foreground">Loading source location…</main>}><WebsiteSourceViewerContent /></Suspense>;
 }
