@@ -57,7 +57,7 @@ ECOSYSTEMS = {
     "MultiversX": "topic:multiversx",
     "Other Web3": "topic:web3",
 }
-MAX_REPO_SIZE_KB = int(os.getenv("MAX_REPO_SIZE_KB", "51200"))
+MAX_REPO_SIZE_KB = int(os.getenv("MAX_REPO_SIZE_KB", "50000"))
 PRIORITY_CATEGORIES = [
     ("Ethereum / EVM", "topic:ethereum"),
     ("Solana", "topic:solana"),
@@ -68,7 +68,7 @@ PRIORITY_CATEGORIES = [
     ("Memecoins", '"memecoin"'),
     ("Crypto Trading Bots", '"crypto trading bot"'),
 ]
-PRIORITY_REPO_SIZE_KB = 20 * 1024
+PRIORITY_REPO_SIZE_KB = 20_000
 SEARCH_REQUEST_INTERVAL = 0.0
 SEARCH_REMAINING = None
 SEARCH_RESET_AT = 0
