@@ -49,3 +49,26 @@ id = "extended-wallet-private-key"
 description = "Bitcoin extended private wallet key assignment"
 regex = '''(?i)(?:xprv|yprv|zprv)[1-9A-HJ-NP-Za-km-z]{80,120}'''
 entropy = 3.5
+
+# Exchange API credentials: passive detection only. The scanner never authenticates,
+# checks account permissions, reads balances, trades, or attempts withdrawals.
+[[rules]]
+id = "exchange-api-key"
+description = "Exchange API key candidate; permissions unknown"
+regex = '''(?i)(?:OKX|BINANCE|COINBASE|KRAKEN|BYBIT|KUCOIN|GATEIO|GATE\.IO|BITGET|MEXC|HTX|HUOBI|CRYPTO\.COM|GEMINI|BITFINEX|DERIBIT|BITSTAMP|BINGX|COINEX)[A-Z0-9_ .-]{0,40}(?:API[_ -]?(?:KEY|KEY_ID)|ACCESS[_ -]?KEY|APIKEY)\s*["']?\s*[:=]\s*["']?([A-Za-z0-9_./+=-]{12,160})'''
+secretGroup = 1
+keywords = ["OKX", "BINANCE", "COINBASE", "KRAKEN", "BYBIT", "KUCOIN", "GATEIO", "BITGET"]
+
+[[rules]]
+id = "exchange-api-secret"
+description = "Exchange API secret candidate; permissions unknown"
+regex = '''(?i)(?:OKX|BINANCE|COINBASE|KRAKEN|BYBIT|KUCOIN|GATEIO|GATE\.IO|BITGET|MEXC|HTX|HUOBI|CRYPTO\.COM|GEMINI|BITFINEX|DERIBIT|BITSTAMP|BINGX|COINEX)[A-Z0-9_ .-]{0,40}(?:API[_ -]?SECRET|SECRET[_ -]?KEY|APISECRET)\s*["']?\s*[:=]\s*["']?([A-Za-z0-9_./+=-]{12,200})'''
+secretGroup = 1
+keywords = ["API_SECRET", "SECRET_KEY", "APISECRET"]
+
+[[rules]]
+id = "exchange-api-passphrase"
+description = "Exchange API passphrase candidate; permissions unknown"
+regex = '''(?i)(?:OKX|BINANCE|COINBASE|KRAKEN|BYBIT|KUCOIN|GATEIO|GATE\.IO|BITGET|MEXC|HTX|HUOBI|CRYPTO\.COM|GEMINI|BITFINEX|DERIBIT|BITSTAMP|BINGX|COINEX)[A-Z0-9_ .-]{0,40}(?:API[_ -]?PASSPHRASE|PASSPHRASE)\s*["']?\s*[:=]\s*["']?([A-Za-z0-9_./+=-]{8,160})'''
+secretGroup = 1
+keywords = ["PASSPHRASE", "API_PASSPHRASE"]
