@@ -137,6 +137,21 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
         ("Gaming / Metaverse", '"web3 game"'),
         ("Privacy / ZK", '"zero knowledge blockchain"'),
         ("Crypto Analytics / Indexers", '"crypto analytics"'),
+        # Centralized exchange API integrations and SDKs.
+        ("OKX API Integrations", '"OKX API"'),
+        ("Binance API Integrations", '"Binance API"'),
+        ("Coinbase API Integrations", '"Coinbase API"'),
+        ("Kraken API Integrations", '"Kraken API"'),
+        ("Bybit API Integrations", '"Bybit API"'),
+        ("KuCoin / Gate.io API Integrations", '"KuCoin API" OR "Gate.io API"'),
+        ("Bitget / MEXC / HTX API Integrations", '"Bitget API" OR "MEXC API" OR "HTX API"'),
+        ("Other Exchange API Integrations", '"Crypto.com API" OR "Gemini API" OR "Bitfinex API" OR "Deribit API" OR "Bitstamp API" OR "BingX API" OR "CoinEx API"'),
+        # Market data, RPC, wallet, custody and payment provider credentials.
+        ("Market Data API Integrations", '"CoinGecko API" OR "CoinMarketCap API" OR "CryptoCompare API"'),
+        ("Blockchain Provider API Integrations", '"Alchemy API" OR "Infura API" OR "QuickNode API" OR "Helius API" OR "Moralis API" OR "Ankr API" OR "Chainstack API"'),
+        ("Wallet / Custody API Integrations", '"Fireblocks API" OR "BitGo API" OR "Copper API" OR "WalletConnect project ID"'),
+        ("Crypto Payment API Integrations", '"Coinbase Commerce API" OR "NOWPayments API" OR "CoinPayments API" OR "Transak API" OR "MoonPay API"'),
+        ("Cross-Exchange Trading Libraries", '"ccxt" OR "crypto exchange SDK"'),
     ]
     discovery_queries = bot_queries + project_queries + list(ECOSYSTEMS.items())
     per_ecosystem = max(1, min(PER_QUERY, MAX_REPOS // max(1, len(discovery_queries))))
