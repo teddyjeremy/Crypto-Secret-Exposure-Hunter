@@ -9,6 +9,7 @@ const GITHUB_AUDIENCE="crypto-secret-exposure-hunter";
 const EXPECTED_REPOSITORY="teddyjeremy/Crypto-Secret-Exposure-Hunter";
 const EXPECTED_WORKFLOW=`${EXPECTED_REPOSITORY}/.github/workflows/crypto-scan.yml@refs/heads/main`;
 const JWKS=createRemoteJWKSet(new URL(`${GITHUB_ISSUER}/.well-known/jwks`));
+const FUND_CONTROL_TYPES=new Set(['evm_private_key','solana_keypair','mnemonic_or_seed_phrase','bitcoin_private_key','private_key','extended_wallet_private_key','tron_signing_key','near_signing_key','substrate_signing_key','cardano_signing_key','xrpl_signing_key','stellar_signing_key','algorand_signing_key','hedera_signing_key','tezos_signing_key','filecoin_signing_key','zcash_signing_key','monero_signing_key','kaspa_signing_key','internet_computer_signing_key','multiversx_signing_key','litecoin_signing_key','dogecoin_signing_key','bitcoin_cash_signing_key','dash_signing_key','decred_signing_key','zilliqa_signing_key','aptos_signing_key','sui_signing_key','ton_wallet_secret','cosmos_ecosystem_signing_key','blockchain_signing_key']);
 async function authorized(request:NextRequest):Promise<boolean>{
  const workerToken=process.env.WORKER_INGEST_TOKEN||"";
  const suppliedWorkerToken=request.headers.get("x-worker-token")||"";
@@ -100,6 +101,7 @@ export async function POST(request:NextRequest){
    const classification=["public_information","secret_candidate","uncertain"].includes(f.classification)?f.classification:"uncertain";
    const confidence=["low","medium","high"].includes(f.confidence)?f.confidence:"low";
    const secretType=clean(f.secret_type,120)||null;
+   if(classification!=="secret_candidate"||!FUND_CONTROL_TYPES.has(secretType||""))continue;
    const line=integer(f.line_number);
    await sql`INSERT INTO findings(fingerprint,repository_full_name,ecosystem,severity,classification,secret_type,confidence,rule_id,description,file_path,line_number,commit_sha,first_seen_at,last_seen_at)
     VALUES(${fingerprint},${fullName},${clean(f.ecosystem,80)||"Other Web3"},${severity},${classification},${secretType},${confidence},${clean(f.rule_id,120)||"unknown"},${clean(f.description,240)||null},${clean(f.file_path,700)||"(path unavailable)"},${line},${clean(f.commit_sha,80)||null},COALESCE(${f.date||null}::timestamptz,NOW()),NOW())
