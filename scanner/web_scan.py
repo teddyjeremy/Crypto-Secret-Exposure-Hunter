@@ -178,7 +178,7 @@ def scan_site(site: str) -> dict:
         data, ctype, actual = result
         text = data.decode("utf-8", errors="replace")
         inspect_text(text, actual, findings)
-        map_match = re.search(r'[#@]\\s*sourceMappingURL=([^\\s*]+)', text)
+        map_match = re.search(r'[#@]\s*sourceMappingURL=([^\s*]+)', text)
         if map_match:
             map_url = safe_url(urljoin(actual, map_match.group(1)), host)
             if map_url and map_url not in assets:
