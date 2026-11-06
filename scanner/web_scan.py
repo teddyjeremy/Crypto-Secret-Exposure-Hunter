@@ -202,12 +202,17 @@ def discover_sites() -> list[str]:
     imply that a project is vulnerable or that nobody else has reviewed it.
     """
     queries = [
-        "solana launchpad", "solana meme coin", "solana nft", "solana mint",
-        "nft marketplace", "nft mint website", "web3 game", "crypto game",
-        "defi dapp", "staking dapp", "web3 portfolio", "blockchain portfolio",
-        "crypto portfolio", "solana wallet", "bitcoin wallet", "ethereum wallet",
-        "web3 website", "crypto website", "blockchain developer portfolio",
-        "solana dapp",
+        # Pump.fun and Solana memecoin launchpad ecosystems
+        "pump.fun", "pumpfun", "pump fun token", "solana memecoin",
+        "solana meme coin launchpad", "memecoin launchpad", "meme token launch",
+        "bonding curve solana", "raydium launchpad", "meteora memecoin",
+        "jupiter swap solana", "token launchpad solana", "dexscreener token",
+        # Broader crypto projects and dapps
+        "solana launchpad", "solana nft", "solana mint", "nft marketplace",
+        "nft mint website", "web3 game", "crypto game", "defi dapp",
+        "staking dapp", "web3 portfolio", "blockchain portfolio", "crypto portfolio",
+        "solana wallet", "bitcoin wallet", "ethereum wallet", "web3 website",
+        "crypto website", "blockchain developer portfolio", "solana dapp",
     ]
     headers = {"Accept": "application/vnd.github+json", "User-Agent": USER_AGENT}
     if GITHUB_TOKEN:
@@ -246,8 +251,30 @@ def main():
             sites.extend(line.strip() for line in file if line.strip() and not line.lstrip().startswith("#"))
     except FileNotFoundError:
         pass
-    # Normalize and deduplicate before applying the run limit.
-    sites = list(dict.fromkeys(sites))[:MAX_SITES]
+    # Normalize candidate hosts before checking the persistent scan registry.
+    sites = list(dict.fromkeys(sites))
+    if WEB_INGEST_URL and sites:
+        request_url = os.getenv("ACTIONS_ID_TOKEN_REQUEST_URL", "")
+        request_token = os.getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "")
+        if not request_url or not request_token or not VERCEL_BYPASS:
+            raise RuntimeError("Website registry lookup requires GitHub Actions OIDC and Vercel bypass configuration.")
+        token_response = requests.get(request_url, headers={"Authorization": f"Bearer {request_token}"},
+                                      params={"audience": "crypto-secret-exposure-hunter"}, timeout=20)
+        token_response.raise_for_status()
+        oidc_token = token_response.json().get("value")
+        if not isinstance(oidc_token, str) or not oidc_token:
+            raise RuntimeError("GitHub Actions did not issue an OIDC token for registry lookup.")
+        registry = requests.post(WEB_INGEST_URL,
+            headers={"Authorization": f"Bearer {oidc_token}",
+                     "x-vercel-protection-bypass": VERCEL_BYPASS,
+                     "Content-Type": "application/json"},
+            json={"event": "registry", "hosts": sites[:5000]}, timeout=30)
+        registry.raise_for_status()
+        visited = set(registry.json().get("recent_hosts", []))
+        before = len(sites)
+        sites = [site for site in sites if urlparse(site).hostname not in visited]
+        print(f"Persistent deduplication: skipped {before - len(sites)} sites scanned successfully in the last 30 days.")
+    sites = sites[:MAX_SITES]
     results_by_index = {}
     print(f"Starting passive scan of {len(sites)} candidate websites with {CONCURRENCY} workers.")
     # Parallelize across separate websites; each site retains bounded requests,
