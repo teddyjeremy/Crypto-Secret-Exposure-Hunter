@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getDb } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -6,9 +7,6 @@ export const dynamic = "force-dynamic";
 const OWNER = "teddyjeremy";
 const REPOSITORY = "Crypto-Secret-Exposure-Hunter";
 const API = `https://api.github.com/repos/${OWNER}/${REPOSITORY}/actions/workflows`;
-const WINDOW_MS = 60_000;
-let lastDispatchAt = 0;
-let dispatchInFlight = false;
 
 async function dispatchWorkflow(token: string, workflow: string, inputs: Record<string, string>) {
   const response = await fetch(`${API}/${workflow}/dispatches`, {
@@ -38,11 +36,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "This action must be started from the dashboard." }, { status: 403 });
   }
 
-  const now = Date.now();
-  if (dispatchInFlight || now - lastDispatchAt < WINDOW_MS) {
-    return NextResponse.json({ error: "A scan was just requested. Wait one minute before starting another pair." }, { status: 429 });
-  }
-
   const token = process.env.GITHUB_DISPATCH_TOKEN;
   if (!token) {
     return NextResponse.json({
@@ -50,9 +43,17 @@ export async function POST(request: NextRequest) {
     }, { status: 503 });
   }
 
-  dispatchInFlight = true;
-  lastDispatchAt = now;
   try {
+    const sql = getDb();
+    const lock = await sql`INSERT INTO scan_dispatch_guard(id,last_requested_at)
+      VALUES(1,NOW())
+      ON CONFLICT(id) DO UPDATE SET last_requested_at=NOW()
+      WHERE scan_dispatch_guard.last_requested_at < NOW() - INTERVAL '1 minute'
+      RETURNING id`;
+    if (!lock.length) {
+      return NextResponse.json({ error: "A scan pair was requested in the last minute. Wait before starting another pair." }, { status: 429 });
+    }
+
     const [repository, website] = await Promise.all([
       dispatchWorkflow(token, "crypto-scan.yml", { max_repos: "40" }),
       dispatchWorkflow(token, "web-exposure-scan.yml", { max_sites: "30" })
@@ -65,8 +66,6 @@ export async function POST(request: NextRequest) {
       message: ok ? "Both scans were dispatched concurrently." : "Check each workflow result; one or both dispatches may have failed."
     }, { status: ok ? 202 : 502, headers: { "Cache-Control": "no-store" } });
   } catch {
-    return NextResponse.json({ error: "GitHub could not be reached to dispatch the workflows." }, { status: 502 });
-  } finally {
-    dispatchInFlight = false;
+    return NextResponse.json({ error: "The dispatcher could not reach GitHub or the scan database." }, { status: 502 });
   }
 }
