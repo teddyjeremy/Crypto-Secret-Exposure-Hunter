@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   if (body?.event === "registry") {
     const hosts = Array.isArray(body?.hosts) ? [...new Set(body.hosts.slice(0, 5000)
       .map((v: unknown) => clean(v, 253).toLowerCase())
-      .filter((v: string) => /^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(v)))] : [];
+      .filter((v: string) => /^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(v)))] : [];
     try {
       const sql = getDb();
       const rows = hosts.length
