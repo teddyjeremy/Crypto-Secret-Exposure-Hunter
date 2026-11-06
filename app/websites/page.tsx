@@ -33,7 +33,7 @@ export default async function WebsitesPage() {
     runs = await sql`SELECT id,status,sites_discovered,sites_scanned,findings_total,started_at,completed_at
       FROM website_scan_runs ORDER BY started_at DESC LIMIT 10`;
     findings = await sql`SELECT fingerprint,site_host,asset_url,rule_id,severity,confidence,line_number,status,last_seen_at
-      FROM website_findings WHERE rule_id IN ('solana_secret_key_array','solana_secret_key_base58','mnemonic_assignment','evm_wallet_private_key','bitcoin_wif_private_key','extended_wallet_private_key') AND COALESCE(status,'open') NOT IN ('false_positive','remediated','not_observed')
+      FROM website_findings WHERE rule_id IN ('solana_secret_key_array','solana_secret_key_base58','mnemonic_assignment','evm_wallet_private_key','bitcoin_wif_private_key','extended_wallet_private_key','exchange_api_key','exchange_api_secret','exchange_api_passphrase') AND COALESCE(status,'open') NOT IN ('false_positive','remediated','not_observed')
       ORDER BY last_seen_at DESC LIMIT 100`;
   } catch {
     error = "Website scan data is temporarily unavailable.";
@@ -42,7 +42,7 @@ export default async function WebsitesPage() {
     <div className="space-y-2">
       <p className="text-sm font-medium text-cyan-400">PASSIVE WEB SCANNER</p>
       <h1 className="text-3xl font-semibold tracking-tight">Website exposure findings</h1>
-      <p className="max-w-3xl text-sm text-muted-foreground">Each finding links to the affected website and the exact public asset inspected. The reported line is the scanner's detected line in that asset. Findings are heuristic candidates, not proof that a credential is valid or usable; secret values are never stored.</p>
+      <p className="max-w-3xl text-sm text-muted-foreground">Each finding links to the affected website and the exact public asset inspected. The reported line is the scanner's detected line in that asset. Findings are heuristic candidates, not proof that a credential is valid or usable. Exchange API permissions are unknown; secret values are never stored.</p>
     </div>
     {error && <p className="rounded-lg border p-4 text-sm">{error}</p>}
     <section className="grid gap-4 sm:grid-cols-3">
@@ -75,7 +75,7 @@ export default async function WebsitesPage() {
                   <Globe size={13} className="mr-1 inline"/> {f.site_host} <ExternalLink size={11} className="ml-1 inline"/>
                 </a> : <span>{f.site_host}</span>}
               </td>
-              <td className="p-3"><span className="font-medium">{f.rule_id}</span><div className="mt-1 text-xs text-muted-foreground">Potential exposed item</div></td>
+              <td className="p-3"><span className="font-medium">{f.rule_id}</span><div className="mt-1 text-xs text-muted-foreground">{String(f.rule_id).startsWith("exchange_api_") ? "Exchange API credential candidate · permissions unknown" : "Potential wallet signing credential"}</div></td>
               <td className="p-3">{f.severity}</td>
               <td className="p-3">{f.confidence}</td>
               <td className="p-3 font-mono">{f.line_number != null ? <a className="text-cyan-400 underline underline-offset-2" href={`/websites/source-viewer?asset=${encodeURIComponent(f.asset_url)}&line=${f.line_number}`}>Line {f.line_number} <ExternalLink size={11} className="ml-1 inline" /></a> : "Not available"}</td>

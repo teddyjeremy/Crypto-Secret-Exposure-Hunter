@@ -24,7 +24,7 @@ async function authorized(request:NextRequest):Promise<boolean>{
   const {payload}=await jwtVerify(token,JWKS,{issuer:GITHUB_ISSUER,audience:GITHUB_AUDIENCE});
   return payload.repository===EXPECTED_REPOSITORY&&payload.ref==="refs/heads/main"
    &&payload.workflow_ref===EXPECTED_WORKFLOW
-   &&["schedule","workflow_dispatch"].includes(String(payload.event_name));
+   &&["schedule","workflow_dispatch","push"].includes(String(payload.event_name));
  }catch{return false;}
 }
 export async function POST(request:NextRequest){

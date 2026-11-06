@@ -41,6 +41,12 @@ PATTERNS = [
     ("evm_wallet_private_key", re.compile(r'(?i)(?:ethereum|evm|wallet|private[_ -]?key|secret[_ -]?key)[^\r\n]{0,50}[=:]\s*["\']?(?:0x)?[a-f0-9]{64}'), "critical", "medium"),
     ("bitcoin_wif_private_key", re.compile(r'(?i)(?:bitcoin|btc|wif|wallet|private[_ -]?key)[^\r\n]{0,50}[=:]\s*["\']?([5KL][1-9A-HJ-NP-Za-km-z]{50,51})'), "critical", "medium"),
     ("extended_wallet_private_key", re.compile(r'(?i)(?:xprv|yprv|zprv)[1-9A-HJ-NP-Za-km-z]{80,120}'), "critical", "medium"),
+    # Exchange API credentials are detected only when the provider name is explicit.
+    # Permission status is unknown; values are never retained or authenticated.
+    ("exchange_api_key", re.compile(r'''(?i)(?:OKX|BINANCE|COINBASE|KRAKEN|BYBIT|KUCOIN|GATEIO|GATE\.IO|BITGET|MEXC|HTX|HUOBI|CRYPTO\.COM|GEMINI|BITFINEX|DERIBIT|BITSTAMP|BINGX|COINEX)[A-Z0-9_ .-]{0,40}(?:API[_ -]?(?:KEY|KEY_ID)|ACCESS[_ -]?KEY|APIKEY)\s*["']?\s*[:=]\s*["']?[A-Za-z0-9_./+=-]{12,160}'''), "high", "medium"),
+    ("exchange_api_secret", re.compile(r'''(?i)(?:OKX|BINANCE|COINBASE|KRAKEN|BYBIT|KUCOIN|GATEIO|GATE\.IO|BITGET|MEXC|HTX|HUOBI|CRYPTO\.COM|GEMINI|BITFINEX|DERIBIT|BITSTAMP|BINGX|COINEX)[A-Z0-9_ .-]{0,40}(?:API[_ -]?SECRET|SECRET[_ -]?KEY|APISECRET)\s*["']?\s*[:=]\s*["']?[A-Za-z0-9_./+=-]{12,200}'''), "critical", "medium"),
+    ("exchange_api_passphrase", re.compile(r'''(?i)(?:OKX|BINANCE|COINBASE|KRAKEN|BYBIT|KUCOIN|GATEIO|GATE\.IO|BITGET|MEXC|HTX|HUOBI|CRYPTO\.COM|GEMINI|BITFINEX|DERIBIT|BITSTAMP|BINGX|COINEX)[A-Z0-9_ .-]{0,40}(?:API[_ -]?PASSPHRASE|PASSPHRASE)\s*["']?\s*[:=]\s*["']?[A-Za-z0-9_./+=-]{8,160}'''), "high", "medium"),
+]
 ]
 
 class AssetParser(HTMLParser):
