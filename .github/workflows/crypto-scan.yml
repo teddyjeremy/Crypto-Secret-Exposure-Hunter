@@ -34,7 +34,7 @@ jobs:
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       MAX_REPOS: ${{ inputs.max_repos || '80' }}
       PER_QUERY: "8"
-      MAX_REPO_SIZE_KB: "51200"
+      MAX_REPO_SIZE_KB: "50000"
       GITHUB_SEARCH_LIMIT: "30"
       REPO_TIMEOUT_SECONDS: "240"
     steps:
