@@ -52,7 +52,6 @@ description = "Exchange-specific API key assignment"
 regex = '''(?i)(?:(?:OKX|BINANCE|COINBASE|KRAKEN|BYBIT|KUCOIN|GATE(?:IO)?|BITGET|MEXC|HTX|GEMINI|BITFINEX|DERIBIT|BITSTAMP|BINGX|COINEX|CRYPTO[_ -]?COM)[A-Z0-9_ -]{0,24}(?:API[_ -]?KEY|ACCESS[_ -]?KEY)|(?:API[_ -]?KEY|ACCESS[_ -]?KEY)[A-Z0-9_ -]{0,24}(?:OKX|BINANCE|COINBASE|KRAKEN|BYBIT|KUCOIN|GATE(?:IO)?|BITGET|MEXC|HTX|GEMINI|BITFINEX|DERIBIT|BITSTAMP|BINGX|COINEX|CRYPTO[_ -]?COM))\s*[:=]\s*["']?([A-Za-z0-9_./+=-]{16,160})'''
 secretGroup = 1
 entropy = 2.5
-keywords = ["OKX", "BINANCE", "COINBASE", "KRAKEN", "BYBIT", "KUCOIN", "BITGET", "MEXC"]
 
 [[rules]]
 id = "exchange-api-secret"
@@ -60,11 +59,9 @@ description = "Exchange-specific API secret assignment"
 regex = '''(?i)(?:(?:OKX|BINANCE|COINBASE|KRAKEN|BYBIT|KUCOIN|GATE(?:IO)?|BITGET|MEXC|HTX|GEMINI|BITFINEX|DERIBIT|BITSTAMP|BINGX|COINEX|CRYPTO[_ -]?COM)[A-Z0-9_ -]{0,24}(?:API[_ -]?SECRET|ACCESS[_ -]?SECRET|SECRET[_ -]?KEY)|(?:API[_ -]?SECRET|ACCESS[_ -]?SECRET|SECRET[_ -]?KEY)[A-Z0-9_ -]{0,24}(?:OKX|BINANCE|COINBASE|KRAKEN|BYBIT|KUCOIN|GATE(?:IO)?|BITGET|MEXC|HTX|GEMINI|BITFINEX|DERIBIT|BITSTAMP|BINGX|COINEX|CRYPTO[_ -]?COM))\s*[:=]\s*["']?([A-Za-z0-9_./+=-]{16,160})'''
 secretGroup = 1
 entropy = 2.8
-keywords = ["API_SECRET", "API-SECRET", "SECRET_KEY", "OKX", "BINANCE"]
 
 [[rules]]
 id = "exchange-api-passphrase"
 description = "Exchange-specific API passphrase assignment"
 regex = '''(?i)(?:(?:OKX|KUCOIN|BITGET)[A-Z0-9_ -]{0,24}(?:API[_ -]?PASSPHRASE|PASSPHRASE)|(?:API[_ -]?PASSPHRASE|PASSPHRASE)[A-Z0-9_ -]{0,24}(?:OKX|KUCOIN|BITGET))\s*[:=]\s*["']?([A-Za-z0-9_./+=-]{8,100})'''
 secretGroup = 1
-keywords = ["PASSPHRASE", "OKX", "KUCOIN", "BITGET"]
