@@ -94,7 +94,7 @@ export function RunScanButton() {
       <div>Checking GitHub every 10 seconds.</div>
     </div>}
     {!workflowStatus?.available && !checking && <div role="status" aria-live="polite" style={{maxWidth:340,fontSize:11,textAlign:"right",color:"var(--red)"}}>
-      {workflowStatus.error || "Unable to confirm workflow status. Scan launch is disabled to prevent duplicate runs."}
+      {workflowStatus?.error || "Unable to confirm workflow status. Scan launch is disabled to prevent duplicate runs."}
     </div>}
     {result && <div role="status" aria-live="polite" style={{maxWidth:330,fontSize:11,textAlign:"right",lineHeight:1.55,color:bothQueued?"var(--green)":"var(--muted)"}}>
       {bothQueued ? <><CheckCircle2 size={13} style={{verticalAlign:"-2px",marginRight:5}}/>Repository and website scans queued concurrently.</> :
