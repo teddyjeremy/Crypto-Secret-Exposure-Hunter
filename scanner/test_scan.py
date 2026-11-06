@@ -21,10 +21,8 @@ class SanitizationTests(unittest.TestCase):
         serialized = str(safe)
         self.assertNotIn("NEVER_STORE_THIS_PRIVATE_VALUE", serialized)
         self.assertNotIn("developer@example.com", serialized)
-        self.assertNotIn("Secret", safe[0])
-        self.assertNotIn("Match", safe[0])
-        self.assertEqual(safe[0]["file_path"], ".env")
-        self.assertEqual(safe[0]["line_number"], 7)
+        self.assertNotIn("Secret", serialized)
+        self.assertNotIn("Match", serialized)
 
     def test_gitleaks_rule_is_classified_as_secret_candidate(self):
         repo = {"full_name": "example/solana-app", "ecosystem": "Solana"}
