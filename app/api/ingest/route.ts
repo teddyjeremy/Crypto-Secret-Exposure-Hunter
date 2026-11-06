@@ -68,7 +68,7 @@ export async function POST(request:NextRequest){
     const confidence=["low","medium","high"].includes(f.confidence)?f.confidence:"low";
     await sql`INSERT INTO findings(fingerprint,repository_full_name,ecosystem,severity,classification,secret_type,confidence,rule_id,description,file_path,line_number,commit_sha,first_seen_at,last_seen_at)
      VALUES(${fingerprint},${fullName},${clean(f.ecosystem,80)||"Other Web3"},${severity},${classification},${clean(f.secret_type,120)||null},${confidence},${clean(f.rule_id,120)||"unknown"},${clean(f.description,240)||null},${clean(f.file_path,700)||"(path unavailable)"},${integer(f.line_number)},${clean(f.commit_sha,80)||null},COALESCE(${f.date||null}::timestamptz,NOW()),NOW())
-     ON CONFLICT(fingerprint) DO UPDATE SET last_seen_at=NOW(),classification=EXCLUDED.classification,secret_type=EXCLUDED.secret_type,confidence=EXCLUDED.confidence,description=EXCLUDED.description,file_path=EXCLUDED.file_path,line_number=EXCLUDED.line_number,commit_sha=EXCLUDED.commit_sha,status=CASE WHEN findings.status='not_observed' THEN 'new' ELSE findings.status END`;
+     ON CONFLICT(fingerprint) DO UPDATE SET last_seen_at=NOW(),classification=EXCLUDED.classification,secret_type=EXCLUDED.secret_type,confidence=EXCLUDED.confidence,description=EXCLUDED.description,file_path=EXCLUDED.file_path,line_number=EXCLUDED.line_number,commit_sha=EXCLUDED.commit_sha,status=CASE WHEN findings.status IN ('not_observed','remediated') THEN 'new' ELSE findings.status END`;
     upserted++;
    }
    if(body.event==="repository_complete"&&eventRepo&&eventRepo.status==="completed"){
@@ -103,7 +103,7 @@ export async function POST(request:NextRequest){
    const line=integer(f.line_number);
    await sql`INSERT INTO findings(fingerprint,repository_full_name,ecosystem,severity,classification,secret_type,confidence,rule_id,description,file_path,line_number,commit_sha,first_seen_at,last_seen_at)
     VALUES(${fingerprint},${fullName},${clean(f.ecosystem,80)||"Other Web3"},${severity},${classification},${secretType},${confidence},${clean(f.rule_id,120)||"unknown"},${clean(f.description,240)||null},${clean(f.file_path,700)||"(path unavailable)"},${line},${clean(f.commit_sha,80)||null},COALESCE(${f.date||null}::timestamptz,NOW()),NOW())
-    ON CONFLICT(fingerprint) DO UPDATE SET last_seen_at=NOW(),classification=EXCLUDED.classification,secret_type=EXCLUDED.secret_type,confidence=EXCLUDED.confidence,description=EXCLUDED.description,file_path=EXCLUDED.file_path,line_number=EXCLUDED.line_number,commit_sha=EXCLUDED.commit_sha,status=CASE WHEN findings.status='not_observed' THEN 'new' ELSE findings.status END`;
+    ON CONFLICT(fingerprint) DO UPDATE SET last_seen_at=NOW(),classification=EXCLUDED.classification,secret_type=EXCLUDED.secret_type,confidence=EXCLUDED.confidence,description=EXCLUDED.description,file_path=EXCLUDED.file_path,line_number=EXCLUDED.line_number,commit_sha=EXCLUDED.commit_sha,status=CASE WHEN findings.status IN ('not_observed','remediated') THEN 'new' ELSE findings.status END`;
    inserted++;
   }
   return NextResponse.json({ok:true,run_id:run.id,repositories_received:repositories.length,findings_received:findings.length,findings_upserted:inserted});
