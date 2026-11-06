@@ -135,6 +135,9 @@ def _wait_for_search_budget() -> None:
         time.sleep(max(1.0, SEARCH_RESET_AT - now + 1.0))
         SEARCH_REMAINING, SEARCH_RESET_AT, SEARCH_LIMIT = _search_rate_limit()
         SEARCH_REQUEST_INTERVAL = 60.0 / SEARCH_LIMIT * 1.10
+        if not GITHUB_TOKEN:
+            SEARCH_REQUEST_INTERVAL = max(SEARCH_REQUEST_INTERVAL, 10.0)
+        now = time.time()
     last = getattr(_wait_for_search_budget, "last_request", 0.0)
     elapsed = now - last
     if elapsed < SEARCH_REQUEST_INTERVAL:
@@ -236,6 +239,8 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
         SEARCH_RESET_AT = int(response.headers.get("X-RateLimit-Reset") or SEARCH_RESET_AT or time.time() + 60)
         SEARCH_LIMIT = max(1, int(response.headers.get("X-RateLimit-Limit") or SEARCH_LIMIT))
         SEARCH_REQUEST_INTERVAL = 60.0 / SEARCH_LIMIT * 1.10
+        if not GITHUB_TOKEN:
+            SEARCH_REQUEST_INTERVAL = max(SEARCH_REQUEST_INTERVAL, 10.0)
         for item in response.json().get("items", [])[:query_quota]:
             full_name = item.get("full_name", "")
             repo_key = full_name.casefold()
