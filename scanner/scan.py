@@ -72,6 +72,7 @@ PRIORITY_REPO_SIZE_KB = 20_000
 SEARCH_REQUEST_INTERVAL = 0.0
 SEARCH_REMAINING = None
 SEARCH_RESET_AT = 0
+SEARCH_LIMIT = 30
 REPO_TIMEOUT = int(os.getenv("REPO_TIMEOUT_SECONDS", "240"))
 MAX_REPOS = min(max(int(os.getenv("MAX_REPOS", "40")), 1), 80)
 PER_QUERY = int(os.getenv("PER_QUERY", "8"))
@@ -111,26 +112,29 @@ def github_oidc_token() -> str:
         raise RuntimeError("GitHub Actions did not issue an OIDC token.")
     return value
 
-def _search_rate_limit() -> tuple[int, int]:
-    """Read GitHub's authenticated search budget before choosing a safe request pace."""
+def _search_rate_limit() -> tuple[int, int, int]:
+    """Read the authenticated GitHub search budget and advertised limit."""
     response = requests.get(f"{API}/rate_limit", headers=headers(), timeout=20)
     response.raise_for_status()
     search = response.json().get("resources", {}).get("search", {})
-    return max(0, int(search.get("remaining") or 0)), int(search.get("reset") or time.time() + 60)
+    remaining = max(0, int(search.get("remaining") or 0))
+    reset_at = int(search.get("reset") or time.time() + 60)
+    limit = max(1, int(search.get("limit") or 30))
+    return remaining, reset_at, limit
 
 
 def _wait_for_search_budget() -> None:
-    global SEARCH_REMAINING, SEARCH_RESET_AT, SEARCH_REQUEST_INTERVAL
+    global SEARCH_REMAINING, SEARCH_RESET_AT, SEARCH_REQUEST_INTERVAL, SEARCH_LIMIT
     if SEARCH_REMAINING is None:
-        SEARCH_REMAINING, SEARCH_RESET_AT = _search_rate_limit()
-        limit = max(1, int(os.getenv("GITHUB_SEARCH_LIMIT", "30")))
-        SEARCH_REQUEST_INTERVAL = 60.0 / limit * 1.10
+        SEARCH_REMAINING, SEARCH_RESET_AT, SEARCH_LIMIT = _search_rate_limit()
+        SEARCH_REQUEST_INTERVAL = 60.0 / SEARCH_LIMIT * 1.10
     if not GITHUB_TOKEN:
         SEARCH_REQUEST_INTERVAL = max(SEARCH_REQUEST_INTERVAL, 10.0)
     now = time.time()
     if SEARCH_REMAINING <= 0:
         time.sleep(max(1.0, SEARCH_RESET_AT - now + 1.0))
-        SEARCH_REMAINING, SEARCH_RESET_AT = _search_rate_limit()
+        SEARCH_REMAINING, SEARCH_RESET_AT, SEARCH_LIMIT = _search_rate_limit()
+        SEARCH_REQUEST_INTERVAL = 60.0 / SEARCH_LIMIT * 1.10
     last = getattr(_wait_for_search_budget, "last_request", 0.0)
     elapsed = now - last
     if elapsed < SEARCH_REQUEST_INTERVAL:
@@ -230,6 +234,8 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
         response.raise_for_status()
         SEARCH_REMAINING = max(0, int(response.headers.get("X-RateLimit-Remaining", max(0, (SEARCH_REMAINING or 1) - 1))))
         SEARCH_RESET_AT = int(response.headers.get("X-RateLimit-Reset") or SEARCH_RESET_AT or time.time() + 60)
+        SEARCH_LIMIT = max(1, int(response.headers.get("X-RateLimit-Limit") or SEARCH_LIMIT))
+        SEARCH_REQUEST_INTERVAL = 60.0 / SEARCH_LIMIT * 1.10
         for item in response.json().get("items", [])[:query_quota]:
             full_name = item.get("full_name", "")
             repo_key = full_name.casefold()
