@@ -104,15 +104,15 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
     # archived repositories too: abandoned bot projects can still expose old credentials.
     bot_queries = [
         ("Crypto Trading Bots", '"crypto trading bot"'),
+        ("Crypto Trading Bots", '"cryptocurrency trading bot"'),
+        ("Crypto Trading Bots", '"binance trading bot"'),
         ("Crypto Trading Bots", "ccxt"),
+        ("Crypto Trading Bots", "freqtrade"),
+        ("Crypto Trading Bots", "hummingbot"),
     ]
-    wallet_queries = [
-        ("Solana", "solana wallet"),
-        ("Ethereum / EVM", "ethereum wallet"),
-        ("Other Web3", "crypto wallet"),
-        ("Other Web3", "walletconnect"),
-    ]
-    discovery_queries = bot_queries + list(ECOSYSTEMS.items()) + wallet_queries
+    # Keep all blockchain ecosystem searches while reserving six discovery
+    # slots for trading-bot projects within the existing repository cap.
+    discovery_queries = bot_queries + list(ECOSYSTEMS.items())
     per_ecosystem = max(1, min(PER_QUERY, MAX_REPOS // max(1, len(discovery_queries))))
     for index, (ecosystem, query) in enumerate(discovery_queries):
         if len(found) >= MAX_REPOS:
