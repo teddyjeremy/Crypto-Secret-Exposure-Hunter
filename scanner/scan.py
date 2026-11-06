@@ -139,6 +139,7 @@ def _wait_for_search_budget() -> None:
 
 
 def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
+    global SEARCH_REMAINING, SEARCH_RESET_AT
     found: dict[str, dict[str, Any]] = {}
     # Prioritize bot-focused searches before the ecosystem topics. This also
     # includes archived bot repositories that may retain old exposed credentials.
@@ -215,7 +216,7 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
                 "q": f"{query} fork:false",
                 "sort": "updated",
                 "order": "desc",
-                "per_page": min(per_ecosystem, 10),
+                "per_page": min(query_quota, 10),
             },
             headers=headers(),
             timeout=30,
