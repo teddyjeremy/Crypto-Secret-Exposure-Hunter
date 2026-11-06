@@ -6,7 +6,7 @@ on:
       max_sites:
         description: Maximum candidate websites to inspect
         required: false
-        default: "30"
+        default: "1000"
   schedule:
     - cron: "17 3 * * 1"
 
@@ -21,13 +21,15 @@ concurrency:
 jobs:
   passive-web-scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 120
     env:
-      WEB_MAX_SITES: ${{ inputs.max_sites || '30' }}
+      WEB_MAX_SITES: ${{ inputs.max_sites || '1000' }}
       GITHUB_TOKEN: ${{ github.token }}
-      WEB_MAX_ASSETS: "25"
+      WEB_MAX_ASSETS: "10"
       WEB_MAX_BYTES: "1500000"
-      WEB_REQUEST_DELAY: "0.5"
+      WEB_REQUEST_DELAY: "0.25"
+      WEB_TIMEOUT_SECONDS: "8"
+      WEB_CONCURRENCY: "20"
       WEB_INGEST_URL: "https://crypto-secret-exposure-hunter.vercel.app/api/web-ingest"
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
