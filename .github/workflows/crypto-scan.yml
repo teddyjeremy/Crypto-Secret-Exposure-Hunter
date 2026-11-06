@@ -74,4 +74,5 @@ jobs:
         run: python -m unittest scanner.test_scan scanner.tests.test_classifier
 
       - name: Run public repository scan
+        if: github.event_name != 'push'
         run: python scanner/scan.py
