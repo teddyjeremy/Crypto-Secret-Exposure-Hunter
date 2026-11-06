@@ -42,7 +42,7 @@ export default async function FindingsPage({searchParams}:{searchParams:Promise<
  const candidates=findings.filter(f=>f.classification==="secret_candidate").length;
  return <details key={repo} open={index===0} style={{border:"1px solid var(--border)",borderRadius:10,background:"rgba(255,255,255,.015)",overflow:"hidden"}}>
  <summary style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"14px 16px",cursor:"pointer",listStylePosition:"inside"}}>
- <span style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}><a className="repo-name" href={`https://github.com/${repo}`} target="_blank" rel="noreferrer" onClick={(event)=>event.stopPropagation()}>{repo}</a><span className="badge medium">{findings.length} FINDINGS</span></span>
+ <span style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}><a className="repo-name" href={`https://github.com/${repo}`} target="_blank" rel="noreferrer">{repo}</a><span className="badge medium">{findings.length} FINDINGS</span></span>
  <span className="muted" style={{fontSize:11,whiteSpace:"nowrap"}}>{candidates} candidates</span>
  </summary>
  <div style={{borderTop:"1px solid var(--border)"}}><FindingsTable rows={findings}/></div>
