@@ -100,6 +100,16 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
     found: dict[str, dict[str, Any]] = {}
     # Supplement ecosystem-topic discovery with wallet-focused searches. These
     # improve recall for repositories that do not use ecosystem topic tags.
+    # Dedicated discovery for public crypto trading-bot repositories. Search includes
+    # archived repositories too: abandoned bot projects can still expose old credentials.
+    bot_queries = [
+        ("Crypto Trading Bots", '"crypto trading bot"'),
+        ("Crypto Trading Bots", '"cryptocurrency trading bot"'),
+        ("Crypto Trading Bots", '"binance trading bot"'),
+        ("Crypto Trading Bots", "ccxt"),
+        ("Crypto Trading Bots", "freqtrade"),
+        ("Crypto Trading Bots", "hummingbot"),
+    ]
     wallet_queries = [
         ("Solana", "solana wallet"),
         ("Ethereum / EVM", "ethereum wallet"),
@@ -108,7 +118,7 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
         ("Other Web3", "blockchain wallet"),
         ("Other Web3", "walletconnect"),
     ]
-    discovery_queries = list(ECOSYSTEMS.items()) + wallet_queries
+    discovery_queries = bot_queries + list(ECOSYSTEMS.items()) + wallet_queries
     per_ecosystem = max(1, min(PER_QUERY, MAX_REPOS // max(1, len(discovery_queries))))
     for index, (ecosystem, query) in enumerate(discovery_queries):
         if len(found) >= MAX_REPOS:
@@ -120,7 +130,8 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
         response = requests.get(
             f"{API}/search/repositories",
             params={
-                "q": f"{query} fork:false archived:false forks:<10",
+                # Bot discovery intentionally includes archived repositories.
+                "q": f"{query} fork:false forks:<10" + ("" if ecosystem == "Crypto Trading Bots" else " archived:false"),
                 "sort": "updated",
                 "order": "desc",
                 "per_page": min(per_ecosystem, 10),
