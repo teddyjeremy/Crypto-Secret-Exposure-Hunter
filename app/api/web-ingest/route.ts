@@ -56,12 +56,18 @@ export async function POST(request: NextRequest) {
       VALUES(${runId},'completed',${sitesDiscovered},${sitesScanned},${findings.length},NOW(),${JSON.stringify({ scanner: "passive-public-web-v1" })}::jsonb)
       ON CONFLICT(id) DO UPDATE SET status='completed',sites_discovered=EXCLUDED.sites_discovered,
       sites_scanned=EXCLUDED.sites_scanned,findings_total=EXCLUDED.findings_total,completed_at=NOW(),summary=EXCLUDED.summary`;
+    for (const site of results) {
+      const host = clean(site?.site, 253).toLowerCase();
+      if (site?.status === "completed" && /^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(host)) {
+        await sql`UPDATE website_findings SET status='not_observed' WHERE site_host=${host} AND status NOT IN ('false_positive','remediated')`;
+      }
+    }
     for (const f of findings) {
       await sql`INSERT INTO website_findings(fingerprint,site_host,asset_url,rule_id,severity,confidence,line_number,evidence,last_seen_at)
         VALUES(${f.fingerprint},${f.host},${f.assetUrl},${f.rule},${f.severity},${f.confidence},${f.line},
         'redacted; source value intentionally not retained',NOW())
         ON CONFLICT(fingerprint) DO UPDATE SET last_seen_at=NOW(),severity=EXCLUDED.severity,
-        confidence=EXCLUDED.confidence,line_number=EXCLUDED.line_number,asset_url=EXCLUDED.asset_url`;
+        confidence=EXCLUDED.confidence,line_number=EXCLUDED.line_number,asset_url=EXCLUDED.asset_url,status=CASE WHEN website_findings.status='not_observed' THEN 'new' ELSE website_findings.status END`;
     }
     return NextResponse.json({ ok: true, run_id: runId, sites_discovered: sitesDiscovered,
       sites_scanned: sitesScanned, findings_received: findings.length });
