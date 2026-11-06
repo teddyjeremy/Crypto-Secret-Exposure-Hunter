@@ -57,7 +57,21 @@ ECOSYSTEMS = {
     "MultiversX": "topic:multiversx",
     "Other Web3": "topic:web3",
 }
-MAX_REPO_SIZE_KB = int(os.getenv("MAX_REPO_SIZE_KB", "150000"))
+MAX_REPO_SIZE_KB = int(os.getenv("MAX_REPO_SIZE_KB", "51200"))
+PRIORITY_CATEGORIES = [
+    ("Ethereum / EVM", "topic:ethereum"),
+    ("Solana", "topic:solana"),
+    ("Bitcoin", "topic:bitcoin"),
+    ("OKX API Integrations", '"OKX API"'),
+    ("Binance API Integrations", '"Binance API"'),
+    ("DeFi Protocols", '"DeFi protocol"'),
+    ("Memecoins", '"memecoin"'),
+    ("Crypto Trading Bots", '"crypto trading bot"'),
+]
+PRIORITY_REPO_SIZE_KB = 20 * 1024
+SEARCH_REQUEST_INTERVAL = 0.0
+SEARCH_REMAINING = None
+SEARCH_RESET_AT = 0
 REPO_TIMEOUT = int(os.getenv("REPO_TIMEOUT_SECONDS", "240"))
 MAX_REPOS = min(max(int(os.getenv("MAX_REPOS", "40")), 1), 80)
 PER_QUERY = int(os.getenv("PER_QUERY", "8"))
@@ -96,6 +110,33 @@ def github_oidc_token() -> str:
     if not isinstance(value, str) or not value:
         raise RuntimeError("GitHub Actions did not issue an OIDC token.")
     return value
+
+def _search_rate_limit() -> tuple[int, int]:
+    """Read GitHub's authenticated search budget before choosing a safe request pace."""
+    response = requests.get(f"{API}/rate_limit", headers=headers(), timeout=20)
+    response.raise_for_status()
+    search = response.json().get("resources", {}).get("search", {})
+    return max(0, int(search.get("remaining") or 0)), int(search.get("reset") or time.time() + 60)
+
+
+def _wait_for_search_budget() -> None:
+    global SEARCH_REMAINING, SEARCH_RESET_AT, SEARCH_REQUEST_INTERVAL
+    if SEARCH_REMAINING is None:
+        SEARCH_REMAINING, SEARCH_RESET_AT = _search_rate_limit()
+        limit = max(1, int(os.getenv("GITHUB_SEARCH_LIMIT", "30")))
+        SEARCH_REQUEST_INTERVAL = 60.0 / limit * 1.10
+    if not GITHUB_TOKEN:
+        SEARCH_REQUEST_INTERVAL = max(SEARCH_REQUEST_INTERVAL, 10.0)
+    now = time.time()
+    if SEARCH_REMAINING <= 0:
+        time.sleep(max(1.0, SEARCH_RESET_AT - now + 1.0))
+        SEARCH_REMAINING, SEARCH_RESET_AT = _search_rate_limit()
+    last = getattr(_wait_for_search_budget, "last_request", 0.0)
+    elapsed = now - last
+    if elapsed < SEARCH_REQUEST_INTERVAL:
+        time.sleep(SEARCH_REQUEST_INTERVAL - elapsed)
+    _wait_for_search_budget.last_request = time.time()
+
 
 def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
     found: dict[str, dict[str, Any]] = {}
@@ -154,15 +195,18 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
         ("Crypto Payment API Integrations", '"Coinbase Commerce API" OR "NOWPayments API" OR "CoinPayments API" OR "Transak API" OR "MoonPay API"'),
         ("Cross-Exchange Trading Libraries", '"ccxt" OR "crypto exchange SDK"'),
     ]
-    discovery_queries = bot_queries + project_queries + list(ECOSYSTEMS.items())
-    per_ecosystem = max(1, min(PER_QUERY, MAX_REPOS // max(1, len(discovery_queries))))
-    for index, (ecosystem, query) in enumerate(discovery_queries):
-        if len(found) >= MAX_REPOS:
+    # Reserve discovery slots for all eight priority areas before secondary searches.
+    priority_quota = max(1, min(6, MAX_REPOS // len(PRIORITY_CATEGORIES)))
+    secondary_queries = bot_queries + project_queries + list(ECOSYSTEMS.items())
+    secondary_quota = max(1, min(PER_QUERY, MAX_REPOS // max(1, len(secondary_queries))))
+    discovery_queries = (
+        [(name, query, priority_quota) for name, query in PRIORITY_CATEGORIES]
+        + [(name, query, secondary_quota) for name, query in secondary_queries]
+    )
+    for index, (ecosystem, query, query_quota) in enumerate(discovery_queries):
+        if len(found) >= MAX_REPOS and index >= len(PRIORITY_CATEGORIES):
             break
-        # Allocate a balanced quota so early chains do not starve later ecosystems.
-        # Search API is rate-limited. Keep requests below approximately 10/minute.
-        if index:
-            time.sleep(6.5)
+        _wait_for_search_budget()
         response = requests.get(
             f"{API}/search/repositories",
             params={
@@ -177,14 +221,21 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
             timeout=30,
         )
         if response.status_code in (403, 429):
+            retry_after = int(response.headers.get("Retry-After") or 0)
+            reset = int(response.headers.get("X-RateLimit-Reset") or time.time() + 60)
+            SEARCH_REMAINING = 0
+            SEARCH_RESET_AT = max(reset, time.time() + retry_after)
             raise RuntimeError("GitHub search rate limit reached; stopping this run safely.")
         response.raise_for_status()
-        for item in response.json().get("items", []):
+        SEARCH_REMAINING = max(0, int(response.headers.get("X-RateLimit-Remaining", max(0, (SEARCH_REMAINING or 1) - 1))))
+        SEARCH_RESET_AT = int(response.headers.get("X-RateLimit-Reset") or SEARCH_RESET_AT or time.time() + 60)
+        for item in response.json().get("items", [])[:query_quota]:
             full_name = item.get("full_name", "")
+            repo_key = full_name.casefold()
             size_kb = int(item.get("size") or 0)
-            if not full_name or full_name in found or size_kb > MAX_REPO_SIZE_KB:
+            if not full_name or item.get("fork") is True or repo_key in found or size_kb > MAX_REPO_SIZE_KB:
                 continue
-            found[full_name] = {
+            found[repo_key] = {
                 "full_name": full_name,
                 "github_repo_id": int(item.get("id") or 0) or None,
                 "html_url": item.get("html_url", ""),
@@ -203,8 +254,20 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
         # Publish progress after each ecosystem query instead of leaving the dashboard frozen.
         if progress_callback:
             progress_callback(index + 1, len(discovery_queries), ecosystem, len(found))
-    # Prefer low-fork repositories so discovery is less dominated by already-popular projects.
-    return sorted(found.values(), key=lambda repo: (int(repo.get("forks") or 0), -int(repo.get("stars") or 0)))
+    def priority(repo: dict[str, Any]) -> tuple[int, int, int]:
+        try:
+            pushed_epoch = int(datetime.fromisoformat(
+                str(repo.get("pushed_at") or "").replace("Z", "+00:00")
+            ).timestamp())
+        except (TypeError, ValueError, OverflowError):
+            pushed_epoch = 0
+        # Repositories below 20 MB first, then most recently updated, then fewer forks.
+        return (
+            int(int(repo.get("size_kb") or 0) >= PRIORITY_REPO_SIZE_KB),
+            -pushed_epoch,
+            int(repo.get("forks") or 0),
+        )
+    return sorted(found.values(), key=priority)
 
 
 def default_branch_head(repo: dict[str, Any]) -> str | None:
@@ -468,10 +531,6 @@ def main() -> None:
         except Exception:
             status, findings = "worker_error", []
         repo["status"] = status
-        if WORKER_INGEST_TOKEN and status == "completed":
-            state[repo["full_name"]] = repo.get("pushed_at") or ""
-            Path(WORKER_STATE_FILE).parent.mkdir(parents=True, exist_ok=True)
-            Path(WORKER_STATE_FILE).write_text(json.dumps(state), encoding="utf-8")
         scanned += int(status == "completed")
         errors[status] = errors.get(status, 0) + 1
         remaining = max(0, 3000 - len(all_findings))
