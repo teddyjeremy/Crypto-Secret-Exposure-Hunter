@@ -165,32 +165,34 @@ def scan_site(site: str) -> dict:
             assets.append(candidate)
     # Bound work even if a page includes hundreds of script tags.
     assets = assets[:MAX_ASSETS]
-    # Source maps are checked only when referenced by a public JS sourceMappingURL comment.
-    for asset in list(assets[1:]):
-        if len(assets) >= MAX_ASSETS:
-            break
+    assets_checked = 1
+    source_maps = set()
+    # Scan the selected JavaScript assets even when the asset list has reached
+    # its cap; the cap limits selection, not whether those assets are fetched.
+    for asset in assets[1:]:
         time.sleep(DELAY)
         result = fetch(asset, host)
         if not result:
             continue
+        assets_checked += 1
         data, ctype, actual = result
         text = data.decode("utf-8", errors="replace")
         inspect_text(text, actual, findings)
-        map_match = re.search(r'[#@]\s*sourceMappingURL=([^\s*]+)', text)
-        if map_match and len(assets) < MAX_ASSETS:
+        map_match = re.search(r'[#@]\\s*sourceMappingURL=([^\\s*]+)', text)
+        if map_match:
             map_url = safe_url(urljoin(actual, map_match.group(1)), host)
             if map_url and map_url not in assets:
-                assets.append(map_url)
-    for map_url in [u for u in assets if u.lower().endswith(".map")][:3]:
-        if map_url == final_url:
-            continue
+                source_maps.add(map_url)
+    # Keep source-map inspection bounded independently from script discovery.
+    for map_url in list(source_maps)[:3]:
         time.sleep(DELAY)
         result = fetch(map_url, host)
         if result:
             data, _, actual = result
+            assets_checked += 1
             inspect_text(data.decode("utf-8", errors="replace"), actual, findings)
     unique = {f["fingerprint"]: f for f in findings}
-    return {"site": host, "status": "completed", "assets_checked": min(len(assets), MAX_ASSETS),
+    return {"site": host, "status": "completed", "assets_checked": assets_checked,
             "findings": list(unique.values())[:250]}
 
 def discover_sites() -> list[str]:
