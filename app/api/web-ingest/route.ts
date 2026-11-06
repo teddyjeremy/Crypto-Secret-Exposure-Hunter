@@ -29,6 +29,22 @@ export async function POST(request: NextRequest) {
   if (length > 4_000_000) return NextResponse.json({ error: "Payload too large" }, { status: 413 });
   let body: any;
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
+  if (body?.event === "registry") {
+    const hosts = Array.isArray(body?.hosts) ? [...new Set(body.hosts.slice(0, 5000)
+      .map((v: unknown) => clean(v, 253).toLowerCase())
+      .filter((v: string) => /^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(v)))] : [];
+    try {
+      const sql = getDb();
+      const rows = hosts.length
+        ? await sql`SELECT host FROM website_scan_targets WHERE host = ANY(${hosts}::text[])
+            AND last_status = 'completed' AND last_scanned_at >= NOW() - INTERVAL '30 days'`
+        : [];
+      return NextResponse.json({ ok: true, recent_hosts: rows.map((row: any) => row.host) },
+        { headers: { "Cache-Control": "no-store" } });
+    } catch {
+      return NextResponse.json({ error: "Website scan registry unavailable" }, { status: 503 });
+    }
+  }
   if (!/^[a-f0-9-]{36}$/i.test(clean(body?.run_id, 36))) return NextResponse.json({ error: "Invalid run ID" }, { status: 400 });
   const results = Array.isArray(body?.results) ? body.results.slice(0, 1000) : [];
   const sitesDiscovered = integer(body?.sites_discovered) ?? 0;
@@ -59,6 +75,10 @@ export async function POST(request: NextRequest) {
     for (const site of results) {
       const host = clean(site?.site, 253).toLowerCase();
       if (site?.status === "completed" && /^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(host)) {
+        await sql`INSERT INTO website_scan_targets(host,last_scanned_at,last_status,last_run_id,updated_at)
+          VALUES(${host},NOW(),'completed',${runId},NOW())
+          ON CONFLICT(host) DO UPDATE SET last_scanned_at=NOW(),last_status='completed',
+          last_run_id=EXCLUDED.last_run_id,updated_at=NOW()`;
         await sql`UPDATE website_findings SET status='not_observed' WHERE site_host=${host} AND status NOT IN ('false_positive','remediated')`;
       }
     }
