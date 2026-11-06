@@ -10,6 +10,7 @@ function WebsiteSourceViewerContent() {
   const line = Math.max(1, Number(params.get("line")) || 1);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [lineCount, setLineCount] = useState(0);
+  const [sourceLines, setSourceLines] = useState<string[]>([]);
   const [message, setMessage] = useState("");
 
   const safeAsset = useMemo(() => {
@@ -38,7 +39,9 @@ function WebsiteSourceViewerContent() {
         if (!response.ok) throw new Error("The asset returned an error.");
         const text = await response.text();
         if (!active) return;
-        setLineCount(text.split(/\r\n|\n|\r/).length);
+        const lines = text.split(/\r\n|\n|\r/);
+        setLineCount(lines.length);
+        setSourceLines(lines);
         setStatus("ready");
       })
       .catch(() => {
@@ -68,16 +71,26 @@ function WebsiteSourceViewerContent() {
       </div>
     </div>
     {status === "ready" && <div className="overflow-hidden rounded-xl border">
-      <div className="border-b bg-muted/40 px-4 py-2 text-xs text-muted-foreground">LOCATION IN FILE</div>
-      <div className="max-h-[55vh] overflow-auto py-2 font-mono text-sm">
+      <div className="border-b bg-muted/40 px-4 py-2 text-xs text-muted-foreground">DETECTED LINE AND NEARBY CONTEXT · SHOWING UP TO 5 LINES EACH SIDE</div>
+      <div className="max-h-[65vh] overflow-auto py-2 font-mono text-xs sm:text-sm">
         {Array.from({ length: Math.max(0, Math.min(lineCount, line + 5) - Math.max(1, line - 5) + 1) }, (_, i) => Math.max(1, line - 5) + i)
-          .map((n) => <div key={n} id={n === line ? "detected-line" : undefined}
-            className={n === line ? "flex items-center gap-4 border-y border-amber-500/40 bg-amber-500/10 px-4 py-3 text-amber-200" : "flex gap-4 px-4 py-2 text-muted-foreground"}>
-            <span className="w-12 shrink-0 select-none text-right opacity-60">{n}</span>
-            <span>{n === line ? "→ Potential exposure detected on this line. Content hidden for safety." : "· · ·"}</span>
-          </div>)}
+          .map((n) => {
+            const raw = sourceLines[n - 1] ?? "";
+            const sensitive = /(private.?key|secret|token|password|mnemonic|seed.?phrase|api.?key|authorization|bearer|access.?key|client.?secret|credential|wallet.?key)/i.test(raw)
+              || /-----BEGIN [A-Z ]*PRIVATE KEY-----|-----END [A-Z ]*PRIVATE KEY-----/i.test(raw)
+              || /(?:0x)?[a-fA-F0-9]{64,}/.test(raw)
+              || /[1-9A-HJ-NP-Za-km-z]{50,}/.test(raw);
+            const display = n === line || sensitive
+              ? (raw.trim() ? "[potentially sensitive source line redacted]" : "")
+              : raw.slice(0, 500);
+            return <div key={n} id={n === line ? "detected-line" : undefined}
+              className={n === line ? "flex gap-3 border-y border-amber-500/40 bg-amber-500/10 px-3 py-2 text-amber-200" : "flex gap-3 px-3 py-1.5 text-muted-foreground"}>
+              <span className="w-12 shrink-0 select-none text-right opacity-60">{n}</span>
+              <span className="min-w-0 whitespace-pre-wrap break-all">{n === line ? "→ " : ""}{display}</span>
+            </div>;
+          })}
       </div>
-      <div className="border-t px-4 py-3 text-xs text-muted-foreground">Only the location is shown. The scanner does not store or display the matched secret.</div>
+      <div className="border-t px-4 py-3 text-xs text-muted-foreground">Showing only nearby lines, not the entire file. The detected line and lines that look sensitive are redacted; other nearby source lines are shown for context. No source text is saved to the database.</div>
     </div>}
     {status === "error" && <div className="rounded-xl border p-4 text-sm"><p>{message}</p></div>}
     <div className="flex items-start gap-2 rounded-xl border p-4 text-sm text-muted-foreground"><ShieldCheck size={17} className="mt-0.5 shrink-0" /><p>To inspect the actual source safely, use the line number in a local text editor. Do not copy, test, or use any credential you encounter.</p></div>
