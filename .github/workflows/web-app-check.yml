@@ -10,6 +10,7 @@ on:
       - "package.json"
       - "next.config.ts"
       - "tsconfig.json"
+      - "eslint.config.mjs"
       - ".github/workflows/web-app-check.yml"
   pull_request:
     branches: [main]
