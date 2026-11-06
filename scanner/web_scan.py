@@ -191,30 +191,47 @@ def scan_site(site: str) -> dict:
             "findings": list(unique.values())[:250]}
 
 def discover_sites() -> list[str]:
-    """Discover candidate project homepages from public GitHub repository metadata."""
-    queries = ["solana launchpad", "solana meme coin", "solana game", "solana gaming"]
+    """Discover smaller/newer crypto and web3 project sites from public repo metadata.
+
+    Low-fork searches improve discovery of less-copied projects; they do not
+    imply that a project is vulnerable or that nobody else has reviewed it.
+    """
+    queries = [
+        "solana launchpad", "solana meme coin", "solana nft", "solana mint",
+        "nft marketplace", "nft mint website", "web3 game", "crypto game",
+        "defi dapp", "staking dapp", "web3 portfolio", "blockchain portfolio",
+        "crypto portfolio", "solana wallet", "bitcoin wallet", "ethereum wallet",
+        "web3 website", "crypto website", "blockchain developer portfolio",
+        "solana dapp",
+    ]
     headers = {"Accept": "application/vnd.github+json", "User-Agent": USER_AGENT}
     if GITHUB_TOKEN:
         headers["Authorization"] = f"Bearer {GITHUB_TOKEN}"
     domains = set()
-    for query in queries:
+    for index, query in enumerate(queries, 1):
         try:
             response = requests.get("https://api.github.com/search/repositories",
-                params={"q": query + " fork:false archived:false", "sort": "updated", "order": "desc", "per_page": 15},
+                params={"q": query + " fork:false archived:false forks:<10",
+                        "sort": "updated", "order": "desc", "per_page": 20},
                 headers=headers, timeout=20)
             if response.status_code in (403, 429):
+                print(f"GitHub discovery rate-limited after {index - 1}/{len(queries)} searches.")
                 break
             response.raise_for_status()
-            for repo in response.json().get("items", []):
+            items = response.json().get("items", [])
+            added = 0
+            for repo in items:
                 homepage = (repo.get("homepage") or "").strip()
                 if homepage:
                     parsed = urlparse(homepage if "://" in homepage else "https://" + homepage)
                     host = (parsed.hostname or "").lower().rstrip(".")
                     if host and "." in host and public_host(host):
                         domains.add("https://" + host)
-        except requests.RequestException:
-            continue
-        time.sleep(2)
+                        added += 1
+            print(f"Discovery {index}/{len(queries)}: {query}; {added} candidate domains.")
+        except requests.RequestException as exc:
+            print(f"Discovery search failed ({query}): {type(exc).__name__}")
+        time.sleep(1.5)
     return sorted(domains)
 
 def main():
