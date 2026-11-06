@@ -114,8 +114,7 @@ export function RunScanButton() {
           </>
         ) : (
           <>
-            <AlertCircle size={13} style={{ verticalAlign: "-2px",", 
- color: "var(--red)" }} />
+            <AlertCircle size={13} style={{ verticalAlign: "-2px", marginRight: 5, color: "var(--red)" }} />
             {result.error || "One or more workflows could not be queued."}
           </>
         )}
