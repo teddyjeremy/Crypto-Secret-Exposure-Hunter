@@ -98,8 +98,8 @@ def github_oidc_token() -> str:
 
 def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
     found: dict[str, dict[str, Any]] = {}
-    # Supplement ecosystem-topic discovery with wallet-focused searches. These
-    # improve recall for repositories that do not use ecosystem topic tags.
+    # Prioritize bot-focused searches before the ecosystem topics. This also
+    # includes archived bot repositories that may retain old exposed credentials.
     # Dedicated discovery for public crypto trading-bot repositories. Search includes
     # archived repositories too: abandoned bot projects can still expose old credentials.
     bot_queries = [
