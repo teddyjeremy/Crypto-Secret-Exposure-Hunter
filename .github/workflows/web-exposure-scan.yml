@@ -1,6 +1,12 @@
 name: Public website exposure scan
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "scanner/web_scan.py"
+      - "scanner/test_web_scan.py"
+      - ".github/workflows/web-exposure-scan.yml"
   workflow_dispatch:
     inputs:
       max_sites:

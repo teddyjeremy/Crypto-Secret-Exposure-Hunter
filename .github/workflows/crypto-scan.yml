@@ -1,6 +1,12 @@
 name: Crypto secret exposure scan
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "scanner/**"
+      - ".gitleaks.toml"
+      - ".github/workflows/crypto-scan.yml"
   workflow_dispatch:
     inputs:
       max_repos:
