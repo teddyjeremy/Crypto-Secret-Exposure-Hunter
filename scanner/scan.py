@@ -381,7 +381,7 @@ def main() -> None:
         "current_repository": None,
         "status_counts": {},
         "repositories": [],
-        "ecosystems": [name for name, _ in discovery_queries],
+        "ecosystems": list(ECOSYSTEMS.keys()),
     }
     send_event("progress", run, summary)
     print("Discovering public repositories across crypto project categories and blockchain ecosystems.")
