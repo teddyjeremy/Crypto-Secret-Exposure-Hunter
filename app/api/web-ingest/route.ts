@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       const sql = getDb();
       const rows = hosts.length
         ? await sql`SELECT host FROM website_scan_targets WHERE host = ANY(${hosts}::text[])
-            AND last_status = 'completed' AND last_scanned_at >= NOW() - INTERVAL '30 days'`
+            AND last_status = 'completed' AND last_scanned_at >= NOW() - INTERVAL '7 days'`
         : [];
       return NextResponse.json({ ok: true, recent_hosts: rows.map((row: any) => row.host) },
         { headers: { "Cache-Control": "no-store" } });
