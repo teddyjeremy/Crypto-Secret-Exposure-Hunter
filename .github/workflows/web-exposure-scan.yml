@@ -27,7 +27,7 @@ concurrency:
 jobs:
   passive-web-scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     env:
       WEB_MAX_SITES: ${{ inputs.max_sites || '1000' }}
       GITHUB_TOKEN: ${{ github.token }}
@@ -35,7 +35,7 @@ jobs:
       WEB_MAX_BYTES: "1500000"
       WEB_REQUEST_DELAY: "0.25"
       WEB_TIMEOUT_SECONDS: "8"
-      WEB_CONCURRENCY: "20"
+      WEB_CONCURRENCY: "12"
       WEB_INGEST_URL: "https://crypto-secret-exposure-hunter.vercel.app/api/web-ingest"
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
