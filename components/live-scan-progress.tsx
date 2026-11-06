@@ -79,7 +79,7 @@ export function LiveScanProgress({ initialRun }: { initialRun?: ScanRun | null }
     {repos.length > 0 && <div style={{marginTop:14}}>
       <div className="panel-kicker" style={{marginBottom:8}}>REPOSITORIES IN THIS RUN ({repos.length})</div>
       <div style={{maxHeight:270,overflowY:"auto",display:"grid",gap:1}}>
-        {repos.map((repo,index) => <div key={repo.full_name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,padding:"8px 2px",borderBottom:"1px solid var(--line)",fontSize:11}}>
+        {repos.map((repo) => <div key={repo.full_name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,padding:"8px 2px",borderBottom:"1px solid var(--line)",fontSize:11}}>
           <div style={{minWidth:0}}><a href={repo.html_url || `https://github.com/${repo.full_name}`} target="_blank" rel="noreferrer" className="repo-name">{repo.full_name}</a><div style={{color:"var(--muted)",fontSize:10,marginTop:3}}>{repo.ecosystem || "Web3"}</div></div>
           <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}><span style={{color:"var(--muted)"}}>{repo.finding_count ?? 0} findings</span><span style={{color:color(repo.status),textTransform:"capitalize"}}>{label(repo.status)}</span></div>
         </div>)}
