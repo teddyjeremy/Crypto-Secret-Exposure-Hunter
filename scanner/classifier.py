@@ -103,6 +103,9 @@ def classify_gitleaks_rule(rule_id: str, description: str = "") -> Classificatio
     if secret_context and any(x in key for x in ("blockchain", "crypto", "web3", "wallet")):
         return Classification("secret_candidate", "blockchain_signing_key", "medium",
             "Rule indicates blockchain signing material; ecosystem mapping requires manual review.")
+    if any(x in key for x in ("exchange_api_key", "exchange_api_secret", "exchange_api_passphrase")):
+        return Classification("secret_candidate", "exchange_api_credential", "medium",
+            "Rule indicates an exchange-specific API credential assignment; manual review is required.")
     if any(x in key for x in ("private_key", "privatekey", "wallet_secret")):
         return Classification("secret_candidate", "private_key", "high",
             "Rule indicates private-key-like material.")
