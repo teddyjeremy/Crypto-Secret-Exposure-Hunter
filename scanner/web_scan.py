@@ -15,16 +15,19 @@ import re
 import socket
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse, urldefrag
 
 import requests
 
 USER_AGENT = "CryptoSecretExposureHunter-WebScanner/1.0 (+passive public asset review)"
-MAX_ASSETS = int(os.getenv("WEB_MAX_ASSETS", "25"))
+MAX_ASSETS = min(12, max(1, int(os.getenv("WEB_MAX_ASSETS", "10"))))
 MAX_BYTES = int(os.getenv("WEB_MAX_BYTES", "1500000"))
-TIMEOUT = int(os.getenv("WEB_TIMEOUT_SECONDS", "12"))
-DELAY = float(os.getenv("WEB_REQUEST_DELAY", "0.5"))
+TIMEOUT = min(15, max(3, int(os.getenv("WEB_TIMEOUT_SECONDS", "8"))))
+DELAY = max(0.2, float(os.getenv("WEB_REQUEST_DELAY", "0.25")))
+CONCURRENCY = min(25, max(1, int(os.getenv("WEB_CONCURRENCY", "20"))))
+MAX_SITES = min(1000, max(1, int(os.getenv("WEB_MAX_SITES", "1000"))))
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 OUTPUT = os.getenv("WEB_SCAN_OUTPUT", "web-scan-results.json")
 WEB_INGEST_URL = os.getenv("WEB_INGEST_URL", "").strip()
@@ -178,7 +181,7 @@ def scan_site(site: str) -> dict:
             map_url = safe_url(urljoin(actual, map_match.group(1)), host)
             if map_url and map_url not in assets:
                 assets.append(map_url)
-    for map_url in [u for u in assets if u.lower().endswith(".map")][:MAX_ASSETS]:
+    for map_url in [u for u in assets if u.lower().endswith(".map")][:3]:
         if map_url == final_url:
             continue
         time.sleep(DELAY)
@@ -212,7 +215,7 @@ def discover_sites() -> list[str]:
         try:
             response = requests.get("https://api.github.com/search/repositories",
                 params={"q": query + " fork:false archived:false forks:<10",
-                        "sort": "updated", "order": "desc", "per_page": 20},
+                        "sort": "updated", "order": "desc", "per_page": 100},
                 headers=headers, timeout=20)
             if response.status_code in (403, 429):
                 print(f"GitHub discovery rate-limited after {index - 1}/{len(queries)} searches.")
@@ -241,11 +244,30 @@ def main():
             sites.extend(line.strip() for line in file if line.strip() and not line.lstrip().startswith("#"))
     except FileNotFoundError:
         pass
-    sites = list(dict.fromkeys(sites))[:int(os.getenv("WEB_MAX_SITES", "30"))]
-    results = []
-    for site in sites:
-        results.append(scan_site(site))
-        time.sleep(DELAY)
+    # Normalize and deduplicate before applying the run limit.
+    sites = list(dict.fromkeys(sites))[:MAX_SITES]
+    results_by_index = {}
+    print(f"Starting passive scan of {len(sites)} candidate websites with {CONCURRENCY} workers.")
+    # Parallelize across separate websites; each site retains bounded requests,
+    # timeouts, asset limits, same-host restrictions and a per-request delay.
+    with ThreadPoolExecutor(max_workers=CONCURRENCY) as pool:
+        futures = {pool.submit(scan_site, site): index for index, site in enumerate(sites)}
+        completed = 0
+        for future in as_completed(futures):
+            index = futures[future]
+            try:
+                results_by_index[index] = future.result()
+            except Exception as exc:
+                results_by_index[index] = {
+                    "site": sites[index], "status": "scan_error",
+                    "assets_checked": 0, "findings": [],
+                    "error": type(exc).__name__,
+                }
+            completed += 1
+            result = results_by_index[index]
+            print(f"Website progress: {completed}/{len(sites)} completed; "
+                  f"status={result['status']}; findings={len(result.get('findings', []))}.")
+    results = [results_by_index[i] for i in sorted(results_by_index)]
     payload = {"scanner": "passive-public-web-v1", "sites_discovered": len(sites),
                "sites_scanned": sum(r["status"] == "completed" for r in results),
                "results": results}
