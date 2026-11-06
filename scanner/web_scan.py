@@ -268,7 +268,7 @@ def main():
             headers={"Authorization": f"Bearer {oidc_token}",
                      "x-vercel-protection-bypass": VERCEL_BYPASS,
                      "Content-Type": "application/json"},
-            json={"event": "registry", "hosts": sites[:5000]}, timeout=30)
+            json={"event": "registry", "hosts": [urlparse(site).hostname for site in sites[:5000] if urlparse(site).hostname]}, timeout=30)
         registry.raise_for_status()
         visited = set(registry.json().get("recent_hosts", []))
         before = len(sites)
