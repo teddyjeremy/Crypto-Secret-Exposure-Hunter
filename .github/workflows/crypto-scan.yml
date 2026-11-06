@@ -6,7 +6,7 @@ on:
       max_repos:
         description: Maximum public repositories to scan in this run
         required: false
-        default: "40"
+        default: "80"
   schedule:
     - cron: "*/30 * * * *"
 
@@ -26,7 +26,7 @@ jobs:
       GITHUB_TOKEN: ${{ github.token }}
       INGEST_URL: https://crypto-secret-exposure-hunter.vercel.app/api/ingest
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-      MAX_REPOS: ${{ inputs.max_repos || '40' }}
+      MAX_REPOS: ${{ inputs.max_repos || '80' }}
       PER_QUERY: "8"
       MAX_REPO_SIZE_KB: "150000"
       REPO_TIMEOUT_SECONDS: "240"
