@@ -39,7 +39,7 @@ The workflow obtains a short-lived GitHub OIDC token at runtime. The Vercel API 
 
 ## Running scans
 
-- The workflow runs daily at 04:17 UTC.
+- The repository workflow also runs every 30 minutes; the website workflow runs weekly. Manual dashboard dispatch starts both concurrently.
 - It can also be started from the dashboard after `GITHUB_DISPATCH_TOKEN` is configured.
 - It searches blockchain ecosystem repository topics, deduplicates results, clones each eligible public repository with history, and scans with Gitleaks.
 - The worker enforces repository-count, repository-size and per-repository timeout limits.
