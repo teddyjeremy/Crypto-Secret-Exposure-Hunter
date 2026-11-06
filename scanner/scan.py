@@ -560,7 +560,7 @@ def main() -> None:
             discovery_errors.append(type(exc).__name__)
             print(f"Repository discovery stopped safely ({type(exc).__name__}); queued work will finish.")
         finally:
-            for _ in range(min(3, max(1, int(os.getenv("SCAN_WORKERS", "3"))))):
+            for _ in range(worker_count):
                 work_queue.put(None)
 
     worker_count = min(4, max(1, int(os.getenv("SCAN_WORKERS", "3"))))
