@@ -65,7 +65,42 @@ def classify_gitleaks_rule(rule_id: str, description: str = "") -> Classificatio
     if any(x in key for x in ("cosmos", "injective")) and any(x in key for x in ("private", "secret", "mnemonic", "key")):
         return Classification("secret_candidate", "cosmos_ecosystem_signing_key", "high",
             "Rule indicates Cosmos ecosystem signing material.")
-    if any(x in key for x in ("tron", "near", "polkadot", "substrate", "cardano", "xrpl", "stellar", "algorand", "hedera", "tezos", "filecoin", "zcash", "monero", "kaspa", "internet_computer", "multiversx")) and any(x in key for x in ("private", "secret", "key", "wallet")):
+    # Detection-only ecosystem registry. These labels classify detector metadata;
+    # they do not validate, derive, authenticate with, or query discovered credentials.
+    ecosystem_rules = (
+        (("tron", "trx"), "tron_signing_key"),
+        (("near",), "near_signing_key"),
+        (("polkadot", "substrate", "kusama"), "substrate_signing_key"),
+        (("cardano", "ada"), "cardano_signing_key"),
+        (("xrpl", "ripple"), "xrpl_signing_key"),
+        (("stellar", "xlm"), "stellar_signing_key"),
+        (("algorand", "algo"), "algorand_signing_key"),
+        (("hedera", "hbar"), "hedera_signing_key"),
+        (("tezos", "xtz"), "tezos_signing_key"),
+        (("filecoin", "fil"), "filecoin_signing_key"),
+        (("zcash", "zec"), "zcash_signing_key"),
+        (("monero", "xmr"), "monero_signing_key"),
+        (("kaspa", "kas"), "kaspa_signing_key"),
+        (("internet_computer", "icp"), "internet_computer_signing_key"),
+        (("multiversx", "elrond", "egld"), "multiversx_signing_key"),
+        (("litecoin", "ltc"), "litecoin_signing_key"),
+        (("dogecoin", "doge"), "dogecoin_signing_key"),
+        (("bitcoin_cash", "bitcoincash", "bch"), "bitcoin_cash_signing_key"),
+        (("dash",), "dash_signing_key"),
+        (("decred", "dcr"), "decred_signing_key"),
+        (("zilliqa", "zil"), "zilliqa_signing_key"),
+        (("aptos", "apt"), "aptos_signing_key"),
+        (("sui",), "sui_signing_key"),
+        (("ton", "the_open_network"), "ton_wallet_secret"),
+        (("cosmos", "injective", "osmosis", "sei", "celestia", "atom"), "cosmos_ecosystem_signing_key"),
+    )
+    secret_context = any(x in key for x in ("private", "secret", "mnemonic", "seed", "key", "wallet", "signer"))
+    if secret_context:
+        for aliases, secret_type in ecosystem_rules:
+            if any(alias in key for alias in aliases):
+                return Classification("secret_candidate", secret_type, "medium",
+                    "Rule metadata points to this ecosystem's signing material; manual review is required.")
+    if secret_context and any(x in key for x in ("blockchain", "crypto", "web3", "wallet")):
         return Classification("secret_candidate", "blockchain_signing_key", "medium",
             "Rule indicates blockchain signing material; ecosystem mapping requires manual review.")
     if any(x in key for x in ("private_key", "privatekey", "wallet_secret")):
