@@ -34,14 +34,13 @@ WEB_INGEST_URL = os.getenv("WEB_INGEST_URL", "").strip()
 VERCEL_BYPASS = os.getenv("VERCEL_AUTOMATION_BYPASS_SECRET", "").strip()
 
 PATTERNS = [
-    ("private_key_pem", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"), "critical", "high"),
+    # Only self-custody wallet signing material is in scope.
     ("solana_secret_key_array", re.compile(r'"(?:secretKey|secret_key|privateKey|private_key)"\s*:\s*\[[0-9\s,]{120,500}\]'), "critical", "medium"),
     ("solana_secret_key_base58", re.compile(r'"(?:secretKey|secret_key|privateKey|private_key)"\s*:\s*"[1-9A-HJ-NP-Za-km-z]{80,100}"'), "critical", "medium"),
-    ("mnemonic_assignment", re.compile(r'"(?:mnemonic|seedPhrase|seed_phrase|recoveryPhrase)"\s*:\s*"[^"]{35,250}"', re.I), "critical", "medium"),
-    ("aws_access_key_id", re.compile(r'AKIA[0-9A-Z]{16}'), "high", "medium"),
-    ("github_token", re.compile(r'gh[pousr]_[A-Za-z0-9]{30,255}'), "high", "medium"),
-    ("generic_secret_assignment", re.compile(r'(?i)(?:client_secret|api_secret|access_token|private_token)\s*[:=]\s*["\'][^"\']{16,}["\']'), "high", "low"),
-    ("database_connection_string", re.compile(r'(?i)(?:postgres(?:ql)?|mysql)://[^\s"\']{12,}'), "high", "low"),
+    ("mnemonic_assignment", re.compile(r'(?i)"(?:mnemonic|seedPhrase|seed_phrase|recoveryPhrase)"\s*:\s*"[a-z]{3,12}(?:\s+[a-z]{3,12}){11,23}"'), "critical", "medium"),
+    ("evm_wallet_private_key", re.compile(r'(?i)(?:ethereum|evm|wallet|private[_ -]?key|secret[_ -]?key)[^\r\n]{0,50}[=:]\s*["\']?(?:0x)?[a-f0-9]{64}'), "critical", "medium"),
+    ("bitcoin_wif_private_key", re.compile(r'(?i)(?:bitcoin|btc|wif|wallet|private[_ -]?key)[^\r\n]{0,50}[=:]\s*["\']?([5KL][1-9A-HJ-NP-Za-km-z]{50,51})'), "critical", "medium"),
+    ("extended_wallet_private_key", re.compile(r'(?i)(?:xprv|yprv|zprv)[1-9A-HJ-NP-Za-km-z]{80,120}'), "critical", "medium"),
 ]
 
 class AssetParser(HTMLParser):
