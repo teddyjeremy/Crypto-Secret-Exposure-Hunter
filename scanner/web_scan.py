@@ -242,6 +242,18 @@ def discover_sites() -> list[str]:
         "Raydium trading bot open source",
         "DEX automated trading bot",
         "DeFi on-chain trading automation bot",
+        "Solana wallet open source web app",
+        "Ethereum EVM wallet dapp open source",
+        "Bitcoin self custody wallet web app",
+        "crypto wallet connect dapp",
+        "self custody wallet dashboard",
+        "Solana launchpad token trading app",
+        "memecoin trading platform",
+        "crypto copy trading platform",
+        "on-chain wallet automation app",
+        "DeFi protocol web application",
+        "blockchain RPC provider integration",
+        "crypto exchange API dashboard",
 
     ]
     headers = {"Accept": "application/vnd.github+json", "User-Agent": USER_AGENT}
