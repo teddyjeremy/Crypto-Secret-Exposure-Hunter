@@ -1,6 +1,5 @@
 import { getFindings } from "@/lib/db";
 import { BulkFindings } from "@/components/bulk-findings";
-import { Search } from "lucide-react";
 export const dynamic="force-dynamic";
 const EXCHANGE_TYPES=new Set(["exchange_api_key","exchange_api_secret","exchange_api_passphrase"]);
 function categoryOf(f:any):"exchange"|"wallet"{return EXCHANGE_TYPES.has(String(f.secret_type||""))?"exchange":"wallet";}
