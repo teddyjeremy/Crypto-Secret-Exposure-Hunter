@@ -253,9 +253,12 @@ def sanitize_report(raw: Any, repo: dict[str, Any]) -> list[dict[str, Any]]:
     safe: list[dict[str, Any]] = []
     if not isinstance(raw, list):
         return safe
-    # Exchange API credentials only. Wallet signing keys, seed phrases, generic
-    # API tokens and unrelated credentials are intentionally excluded.
+    # Only wallet private-key candidates and provider-specific exchange API
+    # credentials. Mnemonics, generic API tokens and unrelated secrets stay out.
     allowed_rules = {
+        "solana-keypair-json", "private-key-context-hex",
+        "solana-base58-private-key", "evm-private-key",
+        "bitcoin-wif-private-key", "extended-wallet-private-key",
         "exchange-api-key", "exchange-api-secret", "exchange-api-passphrase",
     }
     for item in raw:
