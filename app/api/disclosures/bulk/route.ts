@@ -7,7 +7,7 @@ export async function POST(request:NextRequest){
  if(!fingerprints.length||fingerprints.length>500)return NextResponse.json({error:"Select between 1 and 500 findings"},{status:400});
  try{
   const sql=getDb();
-  const findings=await sql`SELECT fingerprint FROM findings WHERE fingerprint = ANY(${fingerprints}::text[])`;
+  const findings=await sql`SELECT fingerprint FROM findings WHERE fingerprint = ANY(${fingerprints}::text[]) AND classification='secret_candidate'`;
   const foundFingerprints=findings.map((f:any)=>String(f.fingerprint));
   const existing=foundFingerprints.length?await sql`SELECT DISTINCT finding_fingerprint FROM disclosures WHERE finding_fingerprint = ANY(${foundFingerprints}::text[]) AND status NOT IN ('closed','resolved')`:[];
   const existingSet=new Set(existing.map((d:any)=>String(d.finding_fingerprint)));
@@ -34,7 +34,7 @@ export async function POST(request:NextRequest){
      'Security researcher'
     )
    FROM findings f
-   WHERE f.fingerprint = ANY(${pending}::text[])
+   WHERE f.fingerprint = ANY(${pending}::text[]) AND f.classification='secret_candidate'
     AND NOT EXISTS (
      SELECT 1 FROM disclosures d
      WHERE d.finding_fingerprint=f.fingerprint AND d.status NOT IN ('closed','resolved')
