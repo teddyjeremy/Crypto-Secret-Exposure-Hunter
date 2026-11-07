@@ -17,7 +17,7 @@ keywords = ["private_key", "private key", "secret_key"]
 id = "solana-base58-private-key"
 description = "Solana base58 private key assignment"
 regex = '''(?i)(solana|secretKey|privateKey|keypair)[^\r\n]{0,40}[=:]\s*["']?([1-9A-HJ-NP-Za-km-z]{64,88})'''
-secretGroup = 2
+secretGroup = 1
 entropy = 3.5
 keywords = ["solana", "secretKey", "privateKey", "keypair"]
 
