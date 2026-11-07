@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS findings (
   rule_id TEXT NOT NULL, description TEXT, file_path TEXT NOT NULL, line_number INTEGER,
   commit_sha TEXT, first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new','triaged','false_positive','disclosed','remediated')),
+  status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new','triaged','false_positive','disclosed','remediated','not_observed')),
   triage_notes TEXT
 );
 CREATE INDEX IF NOT EXISTS findings_repo_idx ON findings(repository_full_name);
