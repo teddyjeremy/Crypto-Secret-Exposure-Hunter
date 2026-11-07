@@ -206,8 +206,16 @@ def discover_sites() -> list[str]:
         "MEXC API integration", "HTX Huobi API integration",
         "Crypto.com exchange API", "Gemini exchange API", "Bitfinex API integration",
         "Deribit API integration", "Bitstamp API integration", "BingX API integration",
-        "CoinEx API integration", "ccxt exchange integration", "freqtrade exchange",
-        "hummingbot exchange connector",
+        "CoinEx API integration", "ccxt exchange integration",
+        "Freqtrade crypto trading bot exchange API",
+        "Hummingbot exchange connector API keys",
+        "Jesse trading bot exchange API",
+        "OctoBot crypto trading bot exchange API",
+        "Superalgos trading bot exchange API",
+        "FreqAI trading bot exchange integration",
+        "crypto arbitrage bot exchange API",
+        "crypto market making bot exchange API",
+        "open source crypto trading bot exchange connector",
 
     ]
     headers = {"Accept": "application/vnd.github+json", "User-Agent": USER_AGENT}
