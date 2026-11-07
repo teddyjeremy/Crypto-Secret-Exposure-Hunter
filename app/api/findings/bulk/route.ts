@@ -9,7 +9,7 @@ export async function PATCH(request:NextRequest){
  if(!allowed.includes(body.status))return NextResponse.json({error:"Invalid status"},{status:400});
  try{
   const sql=getDb();
-  const rows=await sql`UPDATE findings SET status=${body.status} WHERE id = ANY(${ids}::int[]) RETURNING id,status`;
+  const rows=await sql`UPDATE findings SET status=${body.status} WHERE id = ANY(${ids}::int[]) AND classification='secret_candidate' RETURNING id,status`;
   return NextResponse.json({ok:true,updated:rows.length,findings:rows});
  }catch{return NextResponse.json({error:"Bulk status update failed"},{status:500});}
 }
