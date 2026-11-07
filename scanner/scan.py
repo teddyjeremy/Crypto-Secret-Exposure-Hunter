@@ -24,42 +24,12 @@ except ImportError:  # Direct execution: python scanner/scan.py
 
 API = "https://api.github.com"
 USER_AGENT = "CryptoSecretExposureHunter/1.0 (defensive public repository research)"
-ECOSYSTEMS = {
-    "Solana": "topic:solana",
-    "Ethereum / EVM": "topic:ethereum",
-    "Base": "topic:base-chain",
-    "Polygon": "topic:polygon",
-    "Arbitrum": "topic:arbitrum",
-    "Optimism": "topic:optimism",
-    "BNB Chain": "topic:binance-smart-chain",
-    "Avalanche": "topic:avalanche",
-    "Bitcoin": "topic:bitcoin",
-    "TON": "topic:ton",
-    "Sui": "topic:sui",
-    "Aptos": "topic:aptos",
-    "Cosmos": "topic:cosmos-sdk",
-    "Injective": "topic:injective",
-    "Osmosis": "topic:osmosis",
-    "Sei": "topic:sei",
-    "Celestia": "topic:celestia",
-    "TRON": "topic:tron",
-    "NEAR": "topic:near-protocol",
-    "Polkadot": "topic:polkadot",
-    "Kusama": "topic:kusama",
-    "Cardano": "topic:cardano",
-    "XRP Ledger": "topic:xrpl",
-    "Stellar": "topic:stellar",
-    "Algorand": "topic:algorand",
-    "Hedera": "topic:hedera",
-    "Tezos": "topic:tezos",
-    "Filecoin": "topic:filecoin",
-    "Zcash": "topic:zcash",
-    "Monero": "topic:monero",
-    "Kaspa": "topic:kaspa",
-    "Internet Computer": "topic:internet-computer",
-    "MultiversX": "topic:multiversx",
-    "Other Web3": "topic:web3",
-}
+EXCHANGE_PROVIDERS = [
+    "OKX", "Binance", "Coinbase", "Kraken", "Bybit", "KuCoin", "Gate.io",
+    "Bitget", "MEXC", "HTX", "Crypto.com", "Gemini", "Bitfinex", "Deribit",
+    "Bitstamp", "BingX", "CoinEx",
+]
+
 MAX_REPO_SIZE_KB = int(os.getenv("MAX_REPO_SIZE_KB", "50000"))
 PRIORITY_CATEGORIES = [
     ("Ethereum / EVM", "topic:ethereum"),
@@ -149,81 +119,32 @@ def _wait_for_search_budget() -> None:
 
 
 def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
+    """Discover public repositories integrating centralized exchange APIs."""
     global SEARCH_REMAINING, SEARCH_RESET_AT
     found: dict[str, dict[str, Any]] = {}
-    # Prioritize bot-focused searches before the ecosystem topics. This also
-    # includes archived bot repositories that may retain old exposed credentials.
-    # Dedicated discovery for public crypto trading-bot repositories. Search includes
-    # archived repositories too: abandoned bot projects can still expose old credentials.
-    bot_queries = [
-        ("Crypto Trading Bots", '"crypto trading bot"'),
-        ("Crypto Trading Bots", '"cryptocurrency trading bot"'),
-        ("Crypto Trading Bots", '"binance trading bot"'),
-        ("Crypto Trading Bots", "ccxt"),
-        ("Crypto Trading Bots", "freqtrade"),
-        ("Crypto Trading Bots", "hummingbot"),
+    discovery_queries = [
+        ("OKX", '"OKX API" OR "okx-python" OR "okx-sdk"'),
+        ("Binance", '"Binance API" OR "python-binance" OR "binance-connector"'),
+        ("Coinbase", '"Coinbase API" OR "coinbase-advanced-py"'),
+        ("Kraken", '"Kraken API" OR "krakenex"'),
+        ("Bybit", '"Bybit API" OR "pybit"'),
+        ("KuCoin", '"KuCoin API" OR "kucoin-python"'),
+        ("Gate.io", '"Gate.io API" OR "gate-api"'),
+        ("Bitget", '"Bitget API"'),
+        ("MEXC", '"MEXC API"'),
+        ("HTX", '"HTX API" OR "Huobi API"'),
+        ("Other exchanges", '"Crypto.com API" OR "Gemini API" OR "Bitfinex API" OR "Deribit API" OR "Bitstamp API" OR "BingX API" OR "CoinEx API"'),
+        ("Exchange trading libraries", '"ccxt" OR "freqtrade" OR "hummingbot" OR "crypto trading bot"'),
     ]
-    # Search crypto project categories as well as chain ecosystems. These are
-    # discovery labels only: every repository receives the same passive Gitleaks scan.
-    project_queries = [
-        ("Crypto Wallets", '"crypto wallet"'),
-        ("Hardware / Self-Custody Wallets", '"self custody wallet"'),
-        ("Crypto Exchanges", '"crypto exchange"'),
-        ("Decentralized Exchanges", '"decentralized exchange"'),
-        ("DeFi Protocols", '"DeFi protocol"'),
-        ("Lending / Borrowing", '"crypto lending protocol"'),
-        ("Yield / Farming", '"yield farming"'),
-        ("Staking / Validators", '"staking validator"'),
-        ("Token Launchpads", '"token launchpad"'),
-        ("Memecoins", '"memecoin"'),
-        ("NFT Projects", '"NFT marketplace"'),
-        ("NFT Infrastructure", '"NFT protocol"'),
-        ("Bridges / Interoperability", '"cross chain bridge"'),
-        ("Oracles", '"blockchain oracle"'),
-        ("Payments / Invoicing", '"crypto payments"'),
-        ("Stablecoins", '"stablecoin"'),
-        ("Blockchain Explorers", '"blockchain explorer"'),
-        ("RPC / Node Infrastructure", '"blockchain RPC"'),
-        ("Smart Contract Tooling", '"smart contract"'),
-        ("DAO / Governance", '"DAO governance"'),
-        ("Identity / Credentials", '"web3 identity"'),
-        ("Gaming / Metaverse", '"web3 game"'),
-        ("Privacy / ZK", '"zero knowledge blockchain"'),
-        ("Crypto Analytics / Indexers", '"crypto analytics"'),
-        # Centralized exchange API integrations and SDKs.
-        ("OKX API Integrations", '"OKX API"'),
-        ("Binance API Integrations", '"Binance API"'),
-        ("Coinbase API Integrations", '"Coinbase API"'),
-        ("Kraken API Integrations", '"Kraken API"'),
-        ("Bybit API Integrations", '"Bybit API"'),
-        ("KuCoin / Gate.io API Integrations", '"KuCoin API" OR "Gate.io API"'),
-        ("Bitget / MEXC / HTX API Integrations", '"Bitget API" OR "MEXC API" OR "HTX API"'),
-        ("Other Exchange API Integrations", '"Crypto.com API" OR "Gemini API" OR "Bitfinex API" OR "Deribit API" OR "Bitstamp API" OR "BingX API" OR "CoinEx API"'),
-        # Market data, RPC, wallet, custody and payment provider credentials.
-        ("Market Data API Integrations", '"CoinGecko API" OR "CoinMarketCap API" OR "CryptoCompare API"'),
-        ("Blockchain Provider API Integrations", '"Alchemy API" OR "Infura API" OR "QuickNode API" OR "Helius API" OR "Moralis API" OR "Ankr API" OR "Chainstack API"'),
-        ("Wallet / Custody API Integrations", '"Fireblocks API" OR "BitGo API" OR "Copper API" OR "WalletConnect project ID"'),
-        ("Crypto Payment API Integrations", '"Coinbase Commerce API" OR "NOWPayments API" OR "CoinPayments API" OR "Transak API" OR "MoonPay API"'),
-        ("Cross-Exchange Trading Libraries", '"ccxt" OR "crypto exchange SDK"'),
-    ]
-    # Reserve discovery slots for all eight priority areas before secondary searches.
-    priority_quota = max(1, min(6, MAX_REPOS // len(PRIORITY_CATEGORIES)))
-    secondary_queries = bot_queries + project_queries + list(ECOSYSTEMS.items())
-    secondary_quota = max(1, min(PER_QUERY, MAX_REPOS // max(1, len(secondary_queries))))
-    discovery_queries = (
-        [(name, query, priority_quota) for name, query in PRIORITY_CATEGORIES]
-        + [(name, query, secondary_quota) for name, query in secondary_queries]
-    )
-    for index, (ecosystem, query, query_quota) in enumerate(discovery_queries):
+    query_quota = max(1, min(PER_QUERY, MAX_REPOS // len(discovery_queries)))
+    for index, (provider, query) in enumerate(discovery_queries):
         newly_added: list[dict[str, Any]] = []
-        if len(found) >= MAX_REPOS and index >= len(PRIORITY_CATEGORIES):
+        if len(found) >= MAX_REPOS:
             break
         _wait_for_search_budget()
         response = requests.get(
             f"{API}/search/repositories",
             params={
-                # Include archived projects too: old public repositories can still
-                # contain exposed credentials. Exclude forks to reduce duplicate noise.
                 "q": f"{query} fork:false",
                 "sort": "updated",
                 "order": "desc",
@@ -256,7 +177,7 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
                 "github_repo_id": int(item.get("id") or 0) or None,
                 "html_url": item.get("html_url", ""),
                 "clone_url": item.get("clone_url", ""),
-                "ecosystem": ecosystem,
+                "ecosystem": provider,
                 "description": (item.get("description") or "")[:300],
                 "stars": int(item.get("stargazers_count") or 0),
                 "forks": int(item.get("forks_count") or 0),
@@ -268,9 +189,9 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
             newly_added.append(found[repo_key])
             if len(found) >= MAX_REPOS:
                 break
-        # Publish progress after each ecosystem query instead of leaving the dashboard frozen.
         if progress_callback:
-            progress_callback(index + 1, len(discovery_queries), ecosystem, len(found), newly_added)
+            progress_callback(index + 1, len(discovery_queries), provider, len(found), newly_added)
+
     def priority(repo: dict[str, Any]) -> tuple[int, int, int]:
         try:
             pushed_epoch = int(datetime.fromisoformat(
@@ -278,14 +199,12 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
             ).timestamp())
         except (TypeError, ValueError, OverflowError):
             pushed_epoch = 0
-        # Repositories below 20 MB first, then most recently updated, then fewer forks.
         return (
             int(int(repo.get("size_kb") or 0) >= PRIORITY_REPO_SIZE_KB),
             -pushed_epoch,
             int(repo.get("forks") or 0),
         )
     return sorted(found.values(), key=priority)
-
 
 def default_branch_head(repo: dict[str, Any]) -> str | None:
     """Resolve the exact commit scanned on the default branch."""
@@ -308,25 +227,21 @@ def default_branch_head(repo: dict[str, Any]) -> str | None:
 
 
 def classify(rule_id: str, description: str) -> str:
-    value = f"{rule_id} {description}".lower()
-    if any(term in value for term in ("private-key", "private_key", "mnemonic", "seed-phrase", "wallet", "keypair", "xprv", "wif")):
-        return "critical"
-    if any(term in value for term in ("token", "password", "api", "aws", "database", "generic")):
-        return "high"
-    return "medium"
+    # Severity describes a detected exchange credential pattern, not its
+    # permissions, validity, balance, or ability to withdraw funds.
+    return "high" if rule_id in {
+        "exchange-api-key", "exchange-api-secret", "exchange-api-passphrase"
+    } else "ignored"
 
 
 def sanitize_report(raw: Any, repo: dict[str, Any]) -> list[dict[str, Any]]:
     safe: list[dict[str, Any]] = []
     if not isinstance(raw, list):
         return safe
-    # Wallet signing material plus exchange-specific API credential candidates.
-    # Permission status is always unknown; credentials are never tested.
+    # Exchange API credentials only. Wallet signing keys, seed phrases, generic
+    # API tokens and unrelated credentials are intentionally excluded.
     allowed_rules = {
-        "solana-keypair-json", "mnemonic-seed-phrase", "private-key-context-hex",
-        "solana-base58-private-key", "evm-private-key", "bitcoin-wif-private-key",
-        "extended-wallet-private-key", "exchange-api-key", "exchange-api-secret",
-        "exchange-api-passphrase",
+        "exchange-api-key", "exchange-api-secret", "exchange-api-passphrase",
     }
     for item in raw:
         if not isinstance(item, dict):
@@ -504,7 +419,7 @@ def main() -> None:
         "phase": "discovering",
         "message": "Discovering public crypto repositories; scans start as soon as each batch is found.",
         "progress_percent": 0, "current_repository": None, "status_counts": {},
-        "repositories": [], "ecosystems": list(ECOSYSTEMS.keys()),
+        "repositories": [], "ecosystems": list(EXCHANGE_PROVIDERS),
         "repositories_skipped_unchanged": 0,
     }
     _post_event_with_retry("progress", run, summary)
