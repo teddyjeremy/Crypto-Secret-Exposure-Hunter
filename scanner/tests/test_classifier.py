@@ -17,10 +17,14 @@ class ClassificationTests(unittest.TestCase):
         result = classify_gitleaks_rule("exchange-api-passphrase")
         self.assertEqual(result.secret_type, "exchange_api_passphrase")
 
-    def test_wallet_private_key_rule_is_ignored(self):
+    def test_wallet_private_key_rule_is_classified(self):
         result = classify_gitleaks_rule("evm-private-key")
-        self.assertEqual(result.category, "ignored")
-        self.assertIsNone(result.secret_type)
+        self.assertEqual(result.category, "secret_candidate")
+        self.assertEqual(result.secret_type, "evm_private_key")
+
+    def test_solana_wallet_key_is_classified(self):
+        result = classify_gitleaks_rule("solana-keypair-json")
+        self.assertEqual(result.secret_type, "solana_keypair")
 
     def test_generic_api_rule_is_ignored(self):
         result = classify_gitleaks_rule("generic-api-key")
