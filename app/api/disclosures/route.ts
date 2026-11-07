@@ -6,9 +6,12 @@ export async function POST(request:NextRequest){
  const fingerprint=typeof body.fingerprint==="string"?body.fingerprint.slice(0,80):"";
  if(!/^[a-f0-9]{32,64}$/i.test(fingerprint))return NextResponse.json({error:"Invalid finding fingerprint"},{status:400});
  try{
-  const sql=getDb();const rows=await sql`SELECT fingerprint,repository_full_name,file_path,line_number,rule_id,severity FROM findings WHERE fingerprint=${fingerprint} LIMIT 1`;
+  const sql=getDb();const rows=await sql`SELECT fingerprint,repository_full_name,file_path,line_number,rule_id,severity FROM findings WHERE fingerprint=${fingerprint} AND classification='secret_candidate' LIMIT 1`;
   if(!rows.length)return NextResponse.json({error:"Finding not found"},{status:404});
-  const f=rows[0];const message=[
+  const f=rows[0];
+  const existing=await sql`SELECT id,status FROM disclosures WHERE finding_fingerprint=${fingerprint} AND status NOT IN ('closed','resolved') ORDER BY created_at DESC LIMIT 1`;
+  if(existing.length)return NextResponse.json({ok:true,alreadyExists:true,disclosure:existing[0]});
+  const message=[
    "Subject: Potential exposed credential in public repository","",
    "Hello repository maintainers,","",
    "I identified a potential secret exposure during a defensive review of public repository content.",
