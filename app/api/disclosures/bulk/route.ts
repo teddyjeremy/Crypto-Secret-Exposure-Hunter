@@ -15,7 +15,7 @@ export async function POST(request:NextRequest){
   const inserted=pending.length?await sql`
    INSERT INTO disclosures(finding_fingerprint,channel,status,message)
    SELECT f.fingerprint,'private','draft',
-    concat_ws(E'\\n',
+    concat_ws(chr(10),\\n',
      'Subject: Potential exposed credential in public repository',
      '',
      'Hello repository maintainers,',
