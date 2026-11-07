@@ -1,48 +1,31 @@
 import unittest
-from scanner.classifier import classify_text, classify_gitleaks_rule
+from scanner.classifier import classify_gitleaks_rule
 
 
 class ClassificationTests(unittest.TestCase):
-    def test_evm_address_is_public(self):
-        result = classify_text("0x" + "a" * 40)
-        self.assertEqual(result.category, "public_information")
-        self.assertEqual(result.secret_type, "evm_address")
-
-    def test_public_identifier_in_credential_context_is_uncertain(self):
-        result = classify_text("0x" + "a" * 40, "PRIVATE_KEY = value")
-        self.assertEqual(result.category, "uncertain")
-
-    def test_secret_context_is_candidate_not_validated(self):
-        result = classify_text("redacted", "WALLET_PRIVATE_KEY = value")
+    def test_okx_exchange_key_is_classified(self):
+        result = classify_gitleaks_rule("exchange-api-key")
         self.assertEqual(result.category, "secret_candidate")
+        self.assertEqual(result.secret_type, "exchange_api_key")
 
-    def test_solana_rule_uses_metadata_only(self):
-        result = classify_gitleaks_rule("solana-keypair")
-        self.assertEqual(result.secret_type, "solana_keypair")
+    def test_exchange_secret_is_classified(self):
+        result = classify_gitleaks_rule("exchange-api-secret")
+        self.assertEqual(result.secret_type, "exchange_api_secret")
+        self.assertEqual(result.confidence, "high")
 
-    def test_bitcoin_wif_rule_is_classified(self):
-        result = classify_gitleaks_rule("bitcoin-wif")
-        self.assertEqual(result.secret_type, "bitcoin_private_key")
+    def test_exchange_passphrase_is_classified(self):
+        result = classify_gitleaks_rule("exchange-api-passphrase")
+        self.assertEqual(result.secret_type, "exchange_api_passphrase")
 
-    def test_tron_signing_key_rule_is_classified(self):
-        result = classify_gitleaks_rule("tron-private-key")
-        self.assertEqual(result.secret_type, "tron_signing_key")
+    def test_wallet_private_key_rule_is_ignored(self):
+        result = classify_gitleaks_rule("evm-private-key")
+        self.assertEqual(result.category, "ignored")
+        self.assertIsNone(result.secret_type)
 
-    def test_substrate_signing_key_rule_is_classified(self):
-        result = classify_gitleaks_rule("polkadot-private-key")
-        self.assertEqual(result.secret_type, "substrate_signing_key")
-
-    def test_sui_signing_key_uses_ingest_allowlist_type(self):
-        result = classify_gitleaks_rule("sui-private-key")
-        self.assertEqual(result.secret_type, "sui_signing_key")
-
-    def test_aptos_signing_key_uses_ingest_allowlist_type(self):
-        result = classify_gitleaks_rule("aptos-private-key")
-        self.assertEqual(result.secret_type, "aptos_signing_key")
-
-    def test_public_identifier_is_not_promoted_to_secret(self):
-        result = classify_text("not-a-key")
-        self.assertEqual(result.category, "uncertain")
+    def test_generic_api_rule_is_ignored(self):
+        result = classify_gitleaks_rule("generic-api-key")
+        self.assertEqual(result.category, "ignored")
+        self.assertIsNone(result.secret_type)
 
 
 if __name__ == "__main__":
