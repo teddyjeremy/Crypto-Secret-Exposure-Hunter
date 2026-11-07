@@ -146,24 +146,35 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
         if len(found) >= MAX_REPOS:
             break
         _wait_for_search_budget()
-        response = requests.get(
-            f"{API}/search/repositories",
-            params={
-                "q": f"{query} fork:false",
-                "sort": "updated",
-                "order": "desc",
-                "per_page": min(query_quota, 10),
-            },
-            headers=headers(),
-            timeout=30,
-        )
+        try:
+            response = requests.get(
+                f"{API}/search/repositories",
+                params={
+                    "q": f"{query} fork:false",
+                    "sort": "updated",
+                    "order": "desc",
+                    "per_page": min(query_quota, 10),
+                },
+                headers=headers(),
+                timeout=30,
+            )
+        except requests.RequestException as exc:
+            print(f"Repository discovery query {index + 1}/{len(discovery_queries)} failed ({provider}): {type(exc).__name__}; continuing.")
+            continue
+
         if response.status_code in (403, 429):
             retry_after = int(response.headers.get("Retry-After") or 0)
             reset = int(response.headers.get("X-RateLimit-Reset") or time.time() + 60)
             SEARCH_REMAINING = 0
             SEARCH_RESET_AT = max(reset, time.time() + retry_after)
-            raise RuntimeError("GitHub search rate limit reached; stopping this run safely.")
-        response.raise_for_status()
+            print(f"Repository discovery rate-limited at query {index + 1}/{len(discovery_queries)} ({provider}); keeping already discovered repositories.")
+            break
+        if response.status_code >= 400:
+            # A malformed/over-constrained query must not discard results from
+            # every other provider or bot category.
+            detail = (response.text or "").replace("\\n", " ")[:180]
+            print(f"Repository discovery query {index + 1}/{len(discovery_queries)} returned HTTP {response.status_code} ({provider}): {detail}; continuing.")
+            continue
         SEARCH_REMAINING = max(0, int(response.headers.get("X-RateLimit-Remaining", max(0, (SEARCH_REMAINING or 1) - 1))))
         SEARCH_RESET_AT = int(response.headers.get("X-RateLimit-Reset") or SEARCH_RESET_AT or time.time() + 60)
         SEARCH_LIMIT = max(1, int(response.headers.get("X-RateLimit-Limit") or SEARCH_LIMIT))
