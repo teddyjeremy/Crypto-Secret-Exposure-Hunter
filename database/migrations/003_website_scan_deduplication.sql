@@ -1,5 +1,5 @@
 -- Persistent website scan deduplication.
--- Successfully scanned hosts are skipped for 30 days, then become eligible again.
+-- Successfully scanned hosts are skipped for 7 days, then become eligible again.
 CREATE TABLE IF NOT EXISTS public.website_scan_targets (
   host text PRIMARY KEY,
   last_scanned_at timestamptz NOT NULL DEFAULT NOW(),
