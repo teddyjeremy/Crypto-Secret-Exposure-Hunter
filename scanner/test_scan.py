@@ -15,13 +15,16 @@ class SanitizationTests(unittest.TestCase):
         self.assertEqual(safe, [])
         self.assertNotIn("NEVER_STORE_THIS_PRIVATE_VALUE", str(safe))
 
-    def test_wallet_signing_keys_are_excluded(self):
-        repo = {"full_name": "example/wallet-app", "ecosystem": "OKX"}
+    def test_wallet_signing_keys_are_reported_without_values(self):
+        repo = {"full_name": "example/wallet-app", "ecosystem": "Ethereum / EVM"}
         raw = [{
             "RuleID": "evm-private-key", "Description": "EVM private key",
             "File": ".env", "Commit": "abcdef123456", "StartLine": 4,
+            "Secret": "SYNTHETIC_PRIVATE_KEY", "Match": "PRIVATE_KEY=SYNTHETIC_PRIVATE_KEY",
         }]
-        self.assertEqual(sanitize_report(raw, repo), [])
+        finding = sanitize_report(raw, repo)[0]
+        self.assertEqual(finding["secret_type"], "evm_private_key")
+        self.assertNotIn("SYNTHETIC_PRIVATE_KEY", str(finding))
 
     def test_exchange_api_credentials_are_reported_without_values(self):
         repo = {"full_name": "example/exchange-bot", "ecosystem": "OKX"}
