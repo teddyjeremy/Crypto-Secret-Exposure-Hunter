@@ -10,7 +10,7 @@ const WORKFLOW = `${REPOSITORY}/.github/workflows/web-exposure-scan.yml@refs/hea
 const JWKS = createRemoteJWKSet(new URL(`${ISSUER}/.well-known/jwks`));
 const clean = (v: unknown, max = 500) => typeof v === "string" ? v.slice(0, max) : "";
 const integer = (v: unknown) => typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : null;
-const ALLOWED_RULES = new Set(["solana_secret_key_array","solana_secret_key_base58","mnemonic_assignment","evm_wallet_private_key","bitcoin_wif_private_key","extended_wallet_private_key","exchange_api_key","exchange_api_secret","exchange_api_passphrase"]);
+const ALLOWED_RULES = new Set(["solana_secret_key_array","solana_secret_key_base58","evm_wallet_private_key","bitcoin_wif_private_key","extended_wallet_private_key","exchange_api_key","exchange_api_secret","exchange_api_passphrase"]);
 
 async function authorized(request: NextRequest) {
   const header = request.headers.get("authorization") || "";
