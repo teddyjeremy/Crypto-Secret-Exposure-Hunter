@@ -17,6 +17,7 @@ export function BulkFindings({rows}:{rows:Finding[]}){
  const [status,setStatus]=useState("triaged");
  const [busy,setBusy]=useState<"status"|"draft"|null>(null);
  const [message,setMessage]=useState("");
+ const [showDisclosureLink,setShowDisclosureLink]=useState(false);
  const selectableRows=rows.slice(0,500);
  const allSelected=selectableRows.length>0&&selectableRows.every(f=>selected.includes(f.id));
  const groups=useMemo(()=>{const m=new Map<string,Finding[]>();for(const f of rows){const k=f.repository_full_name||"Unknown repository";if(!m.has(k))m.set(k,[]);m.get(k)!.push(f);}return Array.from(m.entries()).sort((a,b)=>a[0].localeCompare(b[0]));},[rows]);
@@ -33,8 +34,8 @@ export function BulkFindings({rows}:{rows:Finding[]}){
   finally{setBusy(null);}
  }
  async function createDrafts(){
-  setBusy("draft");setMessage("");
-  try{const fingerprints=rows.filter(f=>selected.includes(f.id)).map(f=>f.fingerprint);const r=await fetch("/api/disclosures/bulk",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fingerprints})});const data=await r.json();if(!r.ok)throw new Error(data.error||"Draft creation failed");setMessage(`Created ${data.created} draft(s); skipped ${data.skipped} existing draft(s)${data.notFound?`; ${data.notFound} finding(s) were unavailable`:""}.`);setSelected([]);}
+  setBusy("draft");setMessage("");setShowDisclosureLink(false);
+  try{const fingerprints=rows.filter(f=>selected.includes(f.id)).map(f=>f.fingerprint);const r=await fetch("/api/disclosures/bulk",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fingerprints})});const data=await r.json();if(!r.ok)throw new Error(data.error||"Draft creation failed");setMessage(`Created ${data.created} draft(s); skipped ${data.skipped} existing draft(s)${data.notFound?`; ${data.notFound} finding(s) were unavailable`:""}. Drafts are saved in the Disclosure Desk.`);setSelected([]);setShowDisclosureLink(data.created>0||data.skipped>0);setSelected([]);}
   catch(e){setMessage(e instanceof Error?e.message:"Bulk draft creation failed.");}
   finally{setBusy(null);}
  }
@@ -48,7 +49,7 @@ export function BulkFindings({rows}:{rows:Finding[]}){
     <button className="btn secondary" disabled={!selected.length||!!busy} onClick={updateStatus}>{busy==="status"?<Loader2 size={13} className="spin"/>:""} Update status</button>
     <button className="btn" disabled={!selected.length||!!busy} onClick={createDrafts}>{busy==="draft"?<Loader2 size={13} className="spin"/>:<FileText size={13}/>} Create drafts ({selected.length})</button>
    </div>
-   {message&&<div className="muted" role="status" style={{padding:"0 14px 12px",fontSize:12}}>{message}</div>}
+   {message&&<div className="muted" role="status" style={{padding:"0 14px 12px",fontSize:12}}>{message}{showDisclosureLink&&<> <a className="repo-name" href="/disclosures">Open Disclosure Desk →</a></>}</div>}
   </div>
   {groups.length?<div style={{display:"grid",gap:10}}>{groups.map(([repo,findings],index)=>{
    const candidates=findings.filter(f=>f.classification==="secret_candidate").length;
