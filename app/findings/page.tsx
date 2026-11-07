@@ -29,7 +29,6 @@ export default async function FindingsPage({searchParams}:{searchParams:Promise<
  let rows:any[]=[];let failed=false;try{rows=await getFindings();}catch{failed=true;}
  const params=await searchParams;
  const selectedChain=String(params?.chain||"").trim().toLowerCase();
- const selectedCategory="exchange";
  const chains=Array.from(new Set(rows.map(f=>String(f.ecosystem||"unknown").toLowerCase()))).sort();
  const categoryRows=rows.filter(f=>categoryOf(f)==="exchange");
  const filteredRows=selectedChain?categoryRows.filter(f=>String(f.ecosystem||"unknown").toLowerCase()===selectedChain):categoryRows;
@@ -46,10 +45,10 @@ export default async function FindingsPage({searchParams}:{searchParams:Promise<
  <div style={{display:"flex",gap:8,flexWrap:"wrap",padding:"12px 14px"}}>
  <span className="btn">Exchange API credentials ({categoryRows.length})</span>
  </div></div>
- <div className="panel"><div className="panel-head"><div className="panel-title">Filter by chain</div><span className="panel-kicker">{chains.length} EXCHANGES / PROVIDERS</span></div>
+ <div className="panel"><div className="panel-head"><div className="panel-title">Filter by exchange provider</div><span className="panel-kicker">{chains.length} EXCHANGES / PROVIDERS</span></div>
  <div style={{display:"flex",gap:8,flexWrap:"wrap",padding:"12px 14px"}}>
- <a className={`btn ${!selectedChain?"":"secondary"}`} href="/findings">All chains ({categoryRows.length})</a>
- {chains.map(chain=><a key={chain} className={`btn ${selectedChain===chain?"":"secondary"}`} href={`/findings?chain=${encodeURIComponent(chain)}$""`}>{chain.toUpperCase()} ({categoryRows.filter(f=>String(f.ecosystem||"unknown").toLowerCase()===chain).length})</a>)}
+ <a className={`btn ${!selectedChain?"":"secondary"}`} href="/findings">All providers ({categoryRows.length})</a>
+ {chains.map(chain=><a key={chain} className={`btn ${selectedChain===chain?"":"secondary"}`} href={`/findings?chain=${encodeURIComponent(chain)}`}>{chain.toUpperCase()} ({categoryRows.filter(f=>String(f.ecosystem||"unknown").toLowerCase()===chain).length})</a>)}
  </div></div>
  <div className="panel"><div className="panel-head"><div className="panel-title">{displayChain?`${displayChain.toUpperCase()} exchange API repository groups`:"Exchange API findings grouped by repository"}</div><span className="panel-kicker">UP TO 100 LATEST FINDINGS PER REPOSITORY · FILE PATHS AND LINES</span></div>
  {repositories.length?<div style={{display:"grid",gap:10,padding:14}}>{repositories.map(([repo,findings],index)=>{
