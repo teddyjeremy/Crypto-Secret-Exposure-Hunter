@@ -52,7 +52,6 @@ jobs:
       - name: Run safety tests
         run: python -m unittest scanner.test_web_scan
       - name: Run passive website scanner
-        if: github.event_name != 'push'
         run: python scanner/web_scan.py
       - name: Upload redacted report
         if: always()
