@@ -3,7 +3,7 @@ import { getDb } from "@/lib/db";
 export const runtime="nodejs";
 export async function POST(request:NextRequest){
  let body:any;try{body=await request.json();}catch{return NextResponse.json({error:"Invalid JSON"},{status:400});}
- const fingerprints=Array.isArray(body.fingerprints)?Array.from(new Set(body.fingerprints.filter((x:any)=>typeof x==="string"&&/^[a-f0-9]{32,64}$/i.test(x)).map((x:string)=>x.slice(0,80))):[];
+ const fingerprints=Array.isArray(body.fingerprints)?Array.from(new Set(body.fingerprints.filter((x:any)=>typeof x==="string"&&/^[a-f0-9]{32,64}$/i.test(x)).map((x:string)=>x.slice(0,80)))):[];
  if(!fingerprints.length||fingerprints.length>500)return NextResponse.json({error:"Select between 1 and 500 findings"},{status:400});
  try{
   const sql=getDb();
