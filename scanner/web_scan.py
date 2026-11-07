@@ -254,7 +254,15 @@ def discover_sites() -> list[str]:
                 for candidate in candidates:
                     if not candidate:
                         continue
-                    parsed = urlparse(candidate if "://" in candidate else "https://" + candidate)
+                    # README links can contain copied terminal/UI text or
+                    # malformed Unicode hostnames. Reuse the strict URL validator
+                    # so one bad candidate cannot abort the whole discovery run.
+                    checked_candidate = safe_url(
+                        candidate if "://" in candidate else "https://" + candidate
+                    )
+                    if not checked_candidate:
+                        continue
+                    parsed = urlparse(checked_candidate)
                     host = (parsed.hostname or "").lower().rstrip(".")
                     if host and "." in host and public_host(host):
                         # Ignore GitHub itself and common source-hosting mirrors.
