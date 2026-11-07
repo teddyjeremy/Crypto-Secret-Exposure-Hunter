@@ -12,6 +12,9 @@ class WebScannerSafetyTests(unittest.TestCase):
     def test_rejects_malformed_port(self):
         self.assertIsNone(safe_url("https://example.com:not-a-port"))
 
+    def test_rejects_invalid_unicode_hostname(self):
+        self.assertIsNone(safe_url("https://127.0.0.1:5000`，深色主题实时看板："))
+
     def test_exchange_api_secret_candidate_is_redacted(self):
         findings = []
         value = "SYNTHETIC_EXCHANGE_SECRET_VALUE_123"
