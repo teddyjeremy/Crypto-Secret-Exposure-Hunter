@@ -1,55 +1,6 @@
 [extend]
 useDefault = false
 
-[[rules]]
-id = "solana-keypair-json"
-description = "Solana keypair byte array in credential-labelled context"
-regex = '''(?is)(?:secretKey|secret_key|keypair|privateKey)\s*["']?\s*[:=]\s*\[?\s*(?:\d{1,3}\s*,\s*){63}\d{1,3}\s*\]?'''
-keywords = ["secretKey", "secret_key", "keypair", "privateKey"]
-
-[[rules]]
-id = "mnemonic-seed-phrase"
-description = "Wallet mnemonic or seed phrase assignment"
-regex = '''(?i)(?:mnemonic|seed[_ -]?phrase)\s*[:=]\s*["'][a-z]{3,12}(?:\s+[a-z]{3,12}){11,23}["']'''
-keywords = ["mnemonic", "seed phrase", "seed_phrase"]
-
-[[rules]]
-id = "private-key-context-hex"
-description = "Hex private key in explicitly credential-labelled context"
-regex = '''(?i)(?:private[_ -]?key|secret[_ -]?key)\s*[:=]\s*["']?(?:0x)?[a-f0-9]{64}'''
-keywords = ["private_key", "private key", "secret_key"]
-
-[[rules]]
-id = "solana-base58-private-key"
-description = "Solana base58 private key assignment"
-regex = '''(?i)(solana|secretKey|privateKey|keypair)[^\r\n]{0,40}[=:]\s*["']?([1-9A-HJ-NP-Za-km-z]{64,88})'''
-secretGroup = 2
-entropy = 3.5
-keywords = ["solana", "secretKey", "privateKey", "keypair"]
-
-[[rules]]
-id = "evm-private-key"
-description = "Ethereum or EVM private key assignment"
-regex = '''(?i)(ethereum|eth|evm|private[_-]?key|secret[_-]?key)[^\r\n]{0,40}[=:]\s*["']?(0x[a-f0-9]{64})'''
-secretGroup = 2
-entropy = 3.5
-keywords = ["ethereum", "eth", "evm", "private_key", "secret_key"]
-
-[[rules]]
-id = "bitcoin-wif-private-key"
-description = "Bitcoin Wallet Import Format private key assignment"
-regex = '''(?i)(bitcoin|btc|wif|private[_-]?key)[^\r\n]{0,40}[=:]\s*["']?([5KL][1-9A-HJ-NP-Za-km-z]{50,51})'''
-secretGroup = 2
-entropy = 3.5
-keywords = ["bitcoin", "btc", "wif", "private_key"]
-
-
-[[rules]]
-id = "extended-wallet-private-key"
-description = "Bitcoin extended private wallet key assignment"
-regex = '''(?i)(?:xprv|yprv|zprv)[1-9A-HJ-NP-Za-km-z]{80,120}'''
-entropy = 3.5
-
 # Exchange API credentials: passive detection only. The scanner never authenticates,
 # checks account permissions, reads balances, trades, or attempts withdrawals.
 [[rules]]
