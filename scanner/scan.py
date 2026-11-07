@@ -134,8 +134,11 @@ def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
         ("MEXC", '"MEXC API"'),
         ("HTX", '"HTX API" OR "Huobi API"'),
         ("Other exchanges", '"Crypto.com API" OR "Gemini API" OR "Bitfinex API" OR "Deribit API" OR "Bitstamp API" OR "BingX API" OR "CoinEx API"'),
-        ("Open-source trading bots", '"Freqtrade" OR "Hummingbot" OR "Jesse trading bot" OR "OctoBot" OR "Superalgos" OR "FreqAI" OR "crypto trading bot"'),
-        ("Exchange connectors and bot frameworks", '"ccxt" OR "freqtrade" OR "hummingbot" OR "jesse" OR "octobot" OR "superalgos" OR "crypto arbitrage bot" OR "crypto market making bot"'),
+        ("Telegram swap and trading bots", '"Telegram swap bot" OR "Telegram trading bot" OR "DEX swap bot" -freqtrade -hummingbot -jesse -octobot -superalgos'),
+        ("Token sniping and launch bots", '"Solana sniper bot" OR "token sniping bot" OR "launch trading bot" -freqtrade -hummingbot -jesse -octobot -superalgos'),
+        ("Copy trading and wallet-follow bots", '"crypto copy trading bot" OR "wallet copy trading bot" OR "on-chain copy trader" -freqtrade -hummingbot -jesse -octobot -superalgos'),
+        ("DEX swap execution bots", '"Uniswap swap bot" OR "Jupiter swap bot" OR "Raydium trading bot" OR "DEX trading bot" -freqtrade -hummingbot -jesse -octobot -superalgos'),
+        ("Automated DeFi trading bots", '"DeFi trading automation bot" OR "on-chain trading bot" OR "automated token trader" -freqtrade -hummingbot -jesse -octobot -superalgos'),
     ]
     query_quota = max(1, min(PER_QUERY, MAX_REPOS // len(discovery_queries)))
     for index, (provider, query) in enumerate(discovery_queries):
