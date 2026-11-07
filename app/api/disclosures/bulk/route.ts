@@ -15,7 +15,7 @@ export async function POST(request:NextRequest){
   const inserted=pending.length?await sql`
    INSERT INTO disclosures(finding_fingerprint,channel,status,message)
    SELECT f.fingerprint,'private','draft',
-    concat_ws(chr(10),\\n',
+    concat_ws(chr(10),
      'Subject: Potential exposed credential in public repository',
      '',
      'Hello repository maintainers,',
@@ -43,5 +43,8 @@ export async function POST(request:NextRequest){
   const created=inserted.length;
   const skipped=existingSet.size+(pending.length-created);
   return NextResponse.json({ok:true,created,skipped,notFound:fingerprints.length-findings.length},{status:201});
- }catch{return NextResponse.json({error:"Could not create bulk disclosure drafts"},{status:500});}
+ }catch(error){
+  console.error("Bulk disclosure draft creation failed",error);
+  return NextResponse.json({error:"Could not create bulk disclosure drafts"},{status:500});
+ }
 }
