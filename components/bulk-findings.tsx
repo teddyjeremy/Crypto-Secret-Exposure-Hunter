@@ -1,6 +1,6 @@
 "use client";
 import { useMemo,useState } from "react";
-import { FileText,Check,Loader2 } from "lucide-react";
+import { FileText,Loader2 } from "lucide-react";
 
 type Finding={id:number;fingerprint:string;repository_full_name:string;ecosystem:string;severity:string;classification:string;secret_type:string;confidence:string;rule_id:string;description:string;file_path:string;line_number:number|null;commit_sha:string|null;status:string};
 const statuses=["new","triaged","false_positive","disclosed","remediated"];
@@ -18,7 +18,6 @@ export function BulkFindings({rows}:{rows:Finding[]}){
  const allSelected=rows.length>0&&rows.every(f=>selected.includes(f.id));
  const groups=useMemo(()=>{const m=new Map<string,Finding[]>();for(const f of rows){const k=f.repository_full_name||"Unknown repository";if(!m.has(k))m.set(k,[]);m.get(k)!.push(f);}return Array.from(m.entries()).sort((a,b)=>a[0].localeCompare(b[0]));},[rows]);
  function toggle(id:number){setSelected(old=>old.includes(id)?old.filter(x=>x!==id):[...old,id]);}
- function toggleAll(){setSelected(old=>allSelected?old.filter(id=>!rows.some(f=>f.id===id)):Array.from(new Set([...old,...rows.map(f=>f.id)])));}
  async function updateStatus(){
   setBusy("status");setMessage("");
   try{const r=await fetch("/api/findings/bulk",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids:selected,status})});const data=await r.json();if(!r.ok)throw new Error(data.error||"Update failed");setMessage(`Updated ${data.updated} finding(s) to “${status.replaceAll("_"," ")}”.`);window.location.reload();}
