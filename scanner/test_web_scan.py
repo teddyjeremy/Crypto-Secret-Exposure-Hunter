@@ -30,11 +30,12 @@ class WebScannerSafetyTests(unittest.TestCase):
         self.assertTrue(any(item["rule_id"] == "exchange_api_key" for item in findings))
         self.assertNotIn(value, str(findings))
 
-    def test_wallet_private_keys_are_out_of_scope(self):
+    def test_wallet_private_keys_are_detected_and_redacted(self):
         findings = []
         value = "0x" + ("a" * 64)
         inspect_text('const wallet_private_key = "' + value + '";', "https://example.com/app.js", findings)
-        self.assertEqual(findings, [])
+        self.assertTrue(any(item["rule_id"] == "evm_wallet_private_key" for item in findings))
+        self.assertNotIn(value, str(findings))
 
     def test_generic_service_tokens_are_out_of_scope(self):
         findings = []
