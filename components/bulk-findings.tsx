@@ -35,7 +35,7 @@ export function BulkFindings({rows}:{rows:Finding[]}){
  }
  async function createDrafts(){
   setBusy("draft");setMessage("");setShowDisclosureLink(false);
-  try{const fingerprints=rows.filter(f=>selected.includes(f.id)).map(f=>f.fingerprint);const r=await fetch("/api/disclosures/bulk",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fingerprints})});const data=await r.json();if(!r.ok)throw new Error(data.error||"Draft creation failed");setMessage(`Created ${data.created} draft(s); skipped ${data.skipped} existing draft(s)${data.notFound?`; ${data.notFound} finding(s) were unavailable`:""}. Drafts are saved in the Disclosure Desk.`);setSelected([]);setShowDisclosureLink(data.created>0||data.skipped>0);setSelected([]);}
+  try{const fingerprints=rows.filter(f=>selected.includes(f.id)).map(f=>f.fingerprint);const r=await fetch("/api/disclosures/bulk",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fingerprints})});const data=await r.json();if(!r.ok)throw new Error(data.error||"Draft creation failed");setMessage(`Created ${data.created} draft(s); skipped ${data.skipped} existing draft(s)${data.notFound?`; ${data.notFound} finding(s) were unavailable`:""}. Drafts are saved in the Disclosure Desk.`);setSelected([]);setShowDisclosureLink(data.created>0||data.skipped>0);}
   catch(e){setMessage(e instanceof Error?e.message:"Bulk draft creation failed.");}
   finally{setBusy(null);}
  }
