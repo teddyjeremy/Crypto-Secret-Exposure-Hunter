@@ -86,25 +86,35 @@ def safe_url(url: str, base_host: str | None = None) -> str | None:
         return None
     return url
 
+FETCH_FAILURES: dict[str, int] = {}
+
+def _note_fetch_failure(reason: str) -> None:
+    # Aggregate diagnostics only; never log response bodies or secret-like data.
+    FETCH_FAILURES[reason] = FETCH_FAILURES.get(reason, 0) + 1
+
 def fetch(url: str, root_host: str):
     current = url
     for _ in range(4):
         checked = safe_url(current, root_host)
         if not checked:
+            _note_fetch_failure("unsafe_or_cross_host_redirect")
             return None
         try:
             response = requests.get(checked, headers={"User-Agent": USER_AGENT, "Accept": "text/html,application/javascript,application/json,*/*"},
                                     timeout=TIMEOUT, stream=True, allow_redirects=False)
-        except requests.RequestException:
+        except requests.RequestException as exc:
+            _note_fetch_failure("network_" + type(exc).__name__)
             return None
         if response.is_redirect:
             location = response.headers.get("Location")
             response.close()
             if not location:
+                _note_fetch_failure("redirect_without_location")
                 return None
             current = urljoin(current, location)
             continue
         if response.status_code != 200:
+            _note_fetch_failure("http_" + str(response.status_code))
             response.close()
             return None
         content_type = response.headers.get("Content-Type", "").lower()
@@ -113,11 +123,16 @@ def fetch(url: str, root_host: str):
             for chunk in response.iter_content(65536):
                 size += len(chunk)
                 if size > MAX_BYTES:
+                    _note_fetch_failure("response_over_size_limit")
                     return None
                 chunks.append(chunk)
+        except requests.RequestException as exc:
+            _note_fetch_failure("body_" + type(exc).__name__)
+            return None
         finally:
             response.close()
         return b"".join(chunks), content_type, checked
+    _note_fetch_failure("redirect_limit")
     return None
 
 def line_for(text: str, offset: int) -> int:
@@ -148,6 +163,9 @@ def scan_site(site: str) -> dict:
     if not start_url:
         return {"site": site, "status": "skipped_invalid_or_nonpublic_host", "assets_checked": 0, "findings": []}
     first = fetch(start_url, host)
+    if not first and start_url.startswith("https://"):
+        # Try HTTP only on the same validated public host after HTTPS fails.
+        first = fetch("http://" + host + "/", host)
     if not first:
         return {"site": site, "status": "unreachable_or_blocked", "assets_checked": 0, "findings": []}
     body, content_type, final_url = first
@@ -342,6 +360,8 @@ def main():
     with open(OUTPUT, "w", encoding="utf-8") as file:
         json.dump(payload, file, indent=2)
     print(json.dumps({k: v for k, v in payload.items() if k != "results"}))
+    if FETCH_FAILURES:
+        print("Website fetch failure summary: " + json.dumps(FETCH_FAILURES, sort_keys=True))
     if WEB_INGEST_URL:
         request_url = os.getenv("ACTIONS_ID_TOKEN_REQUEST_URL", "")
         request_token = os.getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "")
