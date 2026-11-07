@@ -11,7 +11,6 @@ export async function getDashboardData() {
     (SELECT COUNT(DISTINCT repository_full_name)::int FROM findings WHERE classification='secret_candidate' AND secret_type IN ('exchange_api_key','exchange_api_secret','exchange_api_passphrase') AND status NOT IN ('false_positive','remediated','not_observed')) AS repositories,
     (SELECT COUNT(*)::int FROM findings WHERE classification='secret_candidate' AND secret_type IN ('exchange_api_key','exchange_api_secret','exchange_api_passphrase') AND status NOT IN ('false_positive','remediated','not_observed')) AS open_findings,
     (SELECT COUNT(*)::int FROM findings WHERE severity='critical' AND classification='secret_candidate' AND secret_type IN ('exchange_api_key','exchange_api_secret','exchange_api_passphrase') AND status NOT IN ('false_positive','remediated','not_observed')) AS critical,
-    (SELECT COUNT(*)::int FROM findings WHERE classification='secret_candidate' AND secret_type IN ('exchange_api_key','exchange_api_secret','exchange_api_passphrase') AND status NOT IN ('false_positive','remediated','not_observed')) AS wallet_private_key_candidates,
     0::int AS wallet_private_key_candidates,
     0::int AS mnemonic_candidates,
     (SELECT COUNT(*)::int FROM scan_runs WHERE status='completed') AS completed_scans`;
