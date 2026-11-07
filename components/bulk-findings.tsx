@@ -3,7 +3,7 @@ import { useMemo,useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileText,Loader2 } from "lucide-react";
 
-type Finding={id:number;fingerprint:string;repository_full_name:string;ecosystem:string;severity:string;classification:string;secret_type:string;confidence:string;rule_id:string;description:string;file_path:string;line_number:number|null;commit_sha:string|null;status:string};
+type Finding={first_seen_at:string;id:number;fingerprint:string;repository_full_name:string;ecosystem:string;severity:string;classification:string;secret_type:string;confidence:string;rule_id:string;description:string;file_path:string;line_number:number|null;commit_sha:string|null;status:string};
 const statuses=["new","triaged","false_positive","disclosed","remediated"];
 const exchangeTypes=new Set(["exchange_api_key","exchange_api_secret","exchange_api_passphrase"]);
 function fileUrl(f:Finding){
@@ -20,7 +20,11 @@ export function BulkFindings({rows}:{rows:Finding[]}){
  const [showDisclosureLink,setShowDisclosureLink]=useState(false);
  const selectableRows=rows.slice(0,500);
  const allSelected=selectableRows.length>0&&selectableRows.every(f=>selected.includes(f.id));
- const groups=useMemo(()=>{const m=new Map<string,Finding[]>();for(const f of rows){const k=f.repository_full_name||"Unknown repository";if(!m.has(k))m.set(k,[]);m.get(k)!.push(f);}return Array.from(m.entries()).sort((a,b)=>a[0].localeCompare(b[0]));},[rows]);
+ const groups=useMemo(()=>{const m=new Map<string,Finding[]>();for(const f of rows){const k=f.repository_full_name||"Unknown repository";if(!m.has(k))m.set(k,[]);m.get(k)!.push(f);}return Array.from(m.entries()).sort((a,b)=>{
+  const aNewest=Math.max(...a[1].map(f=>new Date(f.first_seen_at).getTime()||0));
+  const bNewest=Math.max(...b[1].map(f=>new Date(f.first_seen_at).getTime()||0));
+  return bNewest-aNewest;
+ });},[rows]);
  function toggleMany(ids:number[]){
   if(ids.every(id=>selected.includes(id)))setSelected(old=>old.filter(id=>!ids.includes(id)));
   else setSelected(old=>Array.from(new Set([...old,...ids])).slice(0,500));
