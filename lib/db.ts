@@ -17,7 +17,26 @@ export async function getDashboardData() {
   const runs = await sql`SELECT id,status,trigger_source,started_at,completed_at,repositories_discovered,repositories_scanned,findings_total,summary,created_at FROM scan_runs ORDER BY created_at DESC LIMIT 8`;
   const findings = await sql`WITH ranked AS (SELECT id,fingerprint,repository_full_name,ecosystem,severity,classification,secret_type,confidence,rule_id,file_path,line_number,commit_sha,status,last_seen_at,ROW_NUMBER() OVER (PARTITION BY repository_full_name ORDER BY last_seen_at DESC) AS repo_rank FROM findings WHERE classification='secret_candidate' AND secret_type IN ('evm_private_key','solana_keypair','bitcoin_private_key','private_key','extended_wallet_private_key','tron_signing_key','near_signing_key','substrate_signing_key','cardano_signing_key','xrpl_signing_key','stellar_signing_key','algorand_signing_key','hedera_signing_key','tezos_signing_key','filecoin_signing_key','zcash_signing_key','monero_signing_key','kaspa_signing_key','internet_computer_signing_key','multiversx_signing_key','litecoin_signing_key','dogecoin_signing_key','bitcoin_cash_signing_key','dash_signing_key','decred_signing_key','zilliqa_signing_key','aptos_signing_key','sui_signing_key','ton_wallet_secret','cosmos_ecosystem_signing_key','blockchain_signing_key','exchange_api_key','exchange_api_secret','exchange_api_passphrase') AND status NOT IN ('false_positive','remediated','not_observed') AND NOT EXISTS (SELECT 1 FROM disclosures d WHERE d.finding_fingerprint = findings.fingerprint AND d.status NOT IN ('closed','resolved'))) SELECT id,fingerprint,repository_full_name,ecosystem,severity,classification,secret_type,confidence,rule_id,file_path,line_number,commit_sha,status,last_seen_at FROM ranked WHERE repo_rank <= 2 ORDER BY last_seen_at DESC LIMIT 12`;
   const ecosystems = await sql`SELECT ecosystem,COUNT(*)::int AS count FROM findings WHERE classification='secret_candidate' AND secret_type IN ('evm_private_key','solana_keypair','bitcoin_private_key','private_key','extended_wallet_private_key','tron_signing_key','near_signing_key','substrate_signing_key','cardano_signing_key','xrpl_signing_key','stellar_signing_key','algorand_signing_key','hedera_signing_key','tezos_signing_key','filecoin_signing_key','zcash_signing_key','monero_signing_key','kaspa_signing_key','internet_computer_signing_key','multiversx_signing_key','litecoin_signing_key','dogecoin_signing_key','bitcoin_cash_signing_key','dash_signing_key','decred_signing_key','zilliqa_signing_key','aptos_signing_key','sui_signing_key','ton_wallet_secret','cosmos_ecosystem_signing_key','blockchain_signing_key','exchange_api_key','exchange_api_secret','exchange_api_passphrase') AND status NOT IN ('false_positive','remediated','not_observed') GROUP BY ecosystem ORDER BY count DESC LIMIT 8`;
-  return { stats, runs, findings, ecosystems };
+  const latestScanFindings = await sql`WITH latest_run AS (
+    SELECT started_at FROM scan_runs
+    WHERE status='completed'
+    ORDER BY completed_at DESC NULLS LAST
+    LIMIT 1
+  )
+  SELECT f.id,f.repository_full_name,f.secret_type,f.rule_id,f.file_path,
+    f.line_number,f.commit_sha,f.status,f.first_seen_at,f.last_seen_at,
+    (f.first_seen_at >= latest_run.started_at) AS newly_discovered,
+    EXISTS (
+      SELECT 1 FROM disclosures d
+      WHERE d.finding_fingerprint=f.fingerprint
+        AND d.status NOT IN ('closed','resolved')
+    ) AS has_active_draft
+  FROM findings f CROSS JOIN latest_run
+  WHERE f.last_seen_at >= latest_run.started_at
+    AND f.classification='secret_candidate'
+  ORDER BY f.last_seen_at DESC
+  LIMIT 20`;
+  return { stats, runs, findings, ecosystems, latestScanFindings };
 }
 export async function getFindings(filters?: {severity?: string; status?: string; search?: string}) {
   const sql = getDb();
