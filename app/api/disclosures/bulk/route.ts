@@ -21,7 +21,7 @@ export async function POST(request:NextRequest){
     `Detection: ${f.rule_id} (${f.severity})`,"",
     "Suggested remediation: treat the value as compromised, rotate or revoke it using your normal trusted procedures, remove it from the working tree and review Git history. Move secrets into a dedicated secrets manager or protected environment variables.",
     "This report intentionally omits the credential value. Please advise if you have a preferred private reporting channel.","","Regards,","Security researcher"
-   ].join("\\n");
+   ].join("\n");
    await sql`INSERT INTO disclosures(finding_fingerprint,channel,status,message) VALUES(${f.fingerprint},'private','draft',${message})`;
    created++;
   }
