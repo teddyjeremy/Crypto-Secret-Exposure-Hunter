@@ -449,7 +449,7 @@ def main() -> None:
         "phase": "discovering",
         "message": "Discovering public crypto repositories; scans start as soon as each batch is found.",
         "progress_percent": 0, "current_repository": None, "status_counts": {},
-        "repositories": [], "ecosystems": list(EXCHANGE_PROVIDERS),
+        "repositories": [], "ecosystems": ["OKX", "Binance", "Other exchanges", "Telegram swap bots", "Solana sniper bots", "Copy-trading bots", "DEX swap bots", "DeFi automation bots", "Crypto wallets", "Crypto exchanges", "DEX and aggregators", "DeFi protocols", "Token launchpads and memecoins", "NFT and gaming", "Bridges and oracles", "Crypto payments", "RPC and blockchain infrastructure", "Solana", "Ethereum / EVM", "Bitcoin", "Other L1 ecosystems", "Cosmos", "Other blockchain ecosystems"],
         "repositories_skipped_unchanged": 0,
     }
     _post_event_with_retry("progress", run, summary)
