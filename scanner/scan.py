@@ -119,26 +119,36 @@ def _wait_for_search_budget() -> None:
 
 
 def discover(progress_callback: Any | None = None) -> list[dict[str, Any]]:
-    """Discover public repositories integrating centralized exchange APIs."""
+    """Discover public crypto repositories; scan only wallet private keys and exchange API credentials."""
     global SEARCH_REMAINING, SEARCH_RESET_AT
     found: dict[str, dict[str, Any]] = {}
     discovery_queries = [
         ("OKX", '"OKX API" OR "okx-python" OR "okx-sdk"'),
         ("Binance", '"Binance API" OR "python-binance" OR "binance-connector"'),
         ("Coinbase", '"Coinbase API" OR "coinbase-advanced-py"'),
-        ("Kraken", '"Kraken API" OR "krakenex"'),
-        ("Bybit", '"Bybit API" OR "pybit"'),
-        ("KuCoin", '"KuCoin API" OR "kucoin-python"'),
-        ("Gate.io", '"Gate.io API" OR "gate-api"'),
-        ("Bitget", '"Bitget API"'),
-        ("MEXC", '"MEXC API"'),
-        ("HTX", '"HTX API" OR "Huobi API"'),
-        ("Other exchanges", '"Crypto.com API" OR "Gemini API" OR "Bitfinex API" OR "Deribit API" OR "Bitstamp API" OR "BingX API" OR "CoinEx API"'),
-        ("Telegram swap and trading bots", '"Telegram swap bot" OR "Telegram trading bot" OR "DEX swap bot" -freqtrade -hummingbot -jesse -octobot -superalgos'),
-        ("Token sniping and launch bots", '"Solana sniper bot" OR "token sniping bot" OR "launch trading bot" -freqtrade -hummingbot -jesse -octobot -superalgos'),
-        ("Copy trading and wallet-follow bots", '"crypto copy trading bot" OR "wallet copy trading bot" OR "on-chain copy trader" -freqtrade -hummingbot -jesse -octobot -superalgos'),
-        ("DEX swap execution bots", '"Uniswap swap bot" OR "Jupiter swap bot" OR "Raydium trading bot" OR "DEX trading bot" -freqtrade -hummingbot -jesse -octobot -superalgos'),
-        ("Automated DeFi trading bots", '"DeFi trading automation bot" OR "on-chain trading bot" OR "automated token trader" -freqtrade -hummingbot -jesse -octobot -superalgos'),
+        ("Kraken / Bybit / KuCoin", '"Kraken API" OR "Bybit API" OR "KuCoin API"'),
+        ("Other exchange APIs", '"Gate.io API" OR "Bitget API" OR "MEXC API" OR "HTX API" OR "Huobi API" OR "Crypto.com API" OR "Gemini API" OR "Bitfinex API" OR "Deribit API" OR "Bitstamp API" OR "BingX API" OR "CoinEx API"'),
+        ("Telegram swap bots", '"Telegram swap bot" OR "Telegram trading bot" OR "DEX swap bot"'),
+        ("Solana sniper bots", '"Solana sniper bot" OR "token sniping bot" OR "launch trading bot"'),
+        ("Copy-trading bots", '"crypto copy trading bot" OR "wallet copy trading bot" OR "on-chain copy trader"'),
+        ("DEX swap bots", '"Uniswap swap bot" OR "Jupiter swap bot" OR "Raydium trading bot" OR "DEX trading bot"'),
+        ("DeFi automation bots", '"DeFi trading automation bot" OR "on-chain trading bot" OR "automated token trader"'),
+        ("Crypto bot libraries", '"crypto trading bot" OR "cryptocurrency trading bot" OR "ccxt"'),
+        ("Crypto wallets", '"crypto wallet" OR "web3 wallet" OR "self custody wallet"'),
+        ("Crypto exchanges", '"crypto exchange" OR "centralized exchange"'),
+        ("DEX and aggregators", '"decentralized exchange" OR "DEX aggregator"'),
+        ("DeFi protocols", '"DeFi protocol" OR "yield farming" OR "crypto lending protocol"'),
+        ("Token launchpads and memecoins", '"token launchpad" OR "memecoin" OR "Solana launchpad"'),
+        ("NFT and gaming", '"NFT marketplace" OR "NFT protocol" OR "web3 game"'),
+        ("Bridges and oracles", '"cross chain bridge" OR "blockchain oracle"'),
+        ("Crypto payments", '"crypto payments" OR "stablecoin" OR "payment gateway crypto"'),
+        ("RPC and blockchain infrastructure", '"blockchain RPC" OR "blockchain node" OR "smart contract tooling"'),
+        ("Solana ecosystem", "topic:solana"),
+        ("Ethereum and EVM ecosystem", "topic:ethereum OR topic:base-chain OR topic:polygon OR topic:arbitrum OR topic:optimism"),
+        ("Bitcoin ecosystem", "topic:bitcoin OR topic:litecoin OR topic:dogecoin"),
+        ("Other L1 ecosystems", "topic:avalanche OR topic:bnb-chain OR topic:tron OR topic:ton OR topic:sui OR topic:aptos"),
+        ("Cosmos ecosystem", "topic:cosmos-sdk OR topic:injective OR topic:osmosis OR topic:sei OR topic:celestia"),
+        ("Other blockchain ecosystems", "topic:polkadot OR topic:cardano OR topic:xrpl OR topic:stellar OR topic:algorand OR topic:hedera OR topic:tezos OR topic:near-protocol"),
     ]
     query_quota = max(1, min(PER_QUERY, MAX_REPOS // len(discovery_queries)))
     for index, (provider, query) in enumerate(discovery_queries):
@@ -242,11 +252,13 @@ def default_branch_head(repo: dict[str, Any]) -> str | None:
 
 
 def classify(rule_id: str, description: str) -> str:
-    # Severity describes a detected exchange credential pattern, not its
-    # permissions, validity, balance, or ability to withdraw funds.
-    return "high" if rule_id in {
-        "exchange-api-key", "exchange-api-secret", "exchange-api-passphrase"
-    } else "ignored"
+    # Severity is a heuristic for manual review, never proof of validity or control.
+    if rule_id in {"exchange-api-key", "exchange-api-secret", "exchange-api-passphrase"}:
+        return "high"
+    if rule_id in {"solana-keypair-json", "solana-base58-private-key", "evm-private-key",
+                   "private-key-context-hex", "bitcoin-wif-private-key", "extended-wallet-private-key"}:
+        return "critical"
+    return "ignored"
 
 
 def sanitize_report(raw: Any, repo: dict[str, Any]) -> list[dict[str, Any]]:
